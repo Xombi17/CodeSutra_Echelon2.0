@@ -31,6 +31,13 @@ Built for the **NMIMS Echelon 2.0 Hackathon** to solve silver market prediction 
 - **PS 6**: Sentiment Lifecycle Tracking - Predicts narrative phase transitions
 - **PS 14**: Stability Monitoring - Warns of overconfidence during calm markets
 
+### 🏆 Hybrid Multi-Agent System (NEW!)
+- **5 Specialized AI Agents**: Fundamental, Sentiment, Technical, Risk, Macro analysts
+- **Multi-Round Debate**: Agents debate and reach consensus on narrative phases
+- **Confidence-Based Weighting**: Intelligently combines quantitative metrics with AI reasoning
+- **Minority Opinions**: Preserves dissenting views for risk awareness
+- **Enhanced Explainability**: Every decision includes detailed reasoning and metrics breakdown
+
 ### 🚀 Advanced Capabilities
 - Multi-model AI orchestration (Groq + Google Gemini + Ollama)
 - Real-time WebSocket updates
@@ -41,6 +48,77 @@ Built for the **NMIMS Echelon 2.0 Hackathon** to solve silver market prediction 
 ### 🎁 Bonus Feature (Phase 8)
 - Computer vision-based physical silver scanner
 - Instant purity detection and valuation
+
+---
+
+## 🏆 Key Differentiators
+
+### 1. Hybrid Intelligence System
+Combines **quantitative metrics** (velocity, correlation, strength) with **multi-agent AI consensus** (5 specialized agents debate and vote).
+
+**Traditional Systems**: Single approach (either metrics OR AI)  
+**SilverSentinel**: Best of both worlds with confidence-based weighting
+
+### 2. Multi-Agent Debate
+- **5 Specialized Agents**: Each with unique expertise and perspective
+- **Consensus Building**: Multiple debate rounds until agreement (60%+ threshold)
+- **Minority Opinions**: Dissenting views are preserved and reported
+- **Dynamic Confidence**: Based on agent agreement level
+
+### 3. Enhanced Explainability
+Every decision includes:
+- Triggered rules with specific thresholds
+- Metrics breakdown (velocity, correlation, sentiment)
+- Phase transition explanation
+- Confidence decomposition
+- Agent voting details and reasoning
+
+---
+
+## 🆕 Hybrid Intelligence API
+
+### Hybrid Analysis
+Analyze a narrative using both metrics and multi-agent consensus:
+
+```bash
+POST /api/narratives/{id}/analyze-hybrid
+```
+
+Returns:
+- Phase (birth/growth/peak/reversal/death)
+- Strength score (0-100)
+- Confidence level (0.0-1.0)
+- Analysis method used (multi-agent vs metrics-fallback)
+- All agent votes with reasoning
+- Minority opinions
+- Quantitative metrics
+- Human-readable explanation
+
+### Pure Multi-Agent Analysis
+Run 5-agent debate on custom narrative data:
+
+```bash
+POST /api/narratives/analyze-multi-agent
+Content-Type: application/json
+
+{
+  "narrative_title": "Solar Demand Surge",
+  "historical_volume_75pct": 65.0,
+  "recent_peak_volume": 120.0,
+  "evidence": [...]
+}
+```
+
+Returns full agent debate with consensus and minority opinions.
+
+### Enhanced Trading Signal
+Get trading signal enriched with agent insights:
+
+```bash
+GET /api/trading-signal-enhanced
+```
+
+Returns traditional signal + agent consensus + hybrid analysis.
 
 ---
 

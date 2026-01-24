@@ -1,0 +1,53 @@
+{
+  "narrative_id": "demo_solar_demand",
+  "narrative_title": "Solar Panel Manufacturing Driving Silver Demand",
+  "historical_volume_75pct": 65.0,
+  "recent_peak_volume": 120.0,
+  "evidence": [
+    {
+      "source_id": "news_solar_1",
+      "source_type": "news",
+      "timestamp": "2024-01-24T10:00:00Z",
+      "text": "Global solar panel production hits record highs as governments accelerate renewable energy targets. Silver demand for photovoltaic cells expected to surge 40% this year according to Silver Institute report.",
+      "author_reputation_score": 0.95,
+      "mention_count": 250,
+      "price_impact_correlation": 0.82
+    },
+    {
+      "source_id": "news_solar_2",
+      "source_type": "news",
+      "timestamp": "2024-01-24T09:30:00Z",
+      "text": "China and India's aggressive solar capacity expansion plans could consume an additional 100 million ounces of silver annually by 2025. Supply concerns mounting.",
+      "author_reputation_score": 0.88,
+      "mention_count": 180,
+      "price_impact_correlation": 0.78
+    },
+    {
+      "source_id": "reddit_solar_1",
+      "source_type": "reddit",
+      "timestamp": "2024-01-24T08:00:00Z",
+      "text": "DD: Why solar silver demand is the most underpriced commodity trade of 2024. Production can't keep up with panel manufacturing growth.",
+      "author_reputation_score": 0.75,
+      "mention_count": 500,
+      "price_impact_correlation": 0.65
+    },
+    {
+      "source_id": "news_solar_3",
+      "source_type": "news",
+      "timestamp": "2024-01-23T18:00:00Z",
+      "text": "First Solar announces 10GW expansion requiring significant silver procurement. Stock jumps 12% on renewable energy momentum.",
+      "author_reputation_score": 0.92,
+      "mention_count": 300,
+      "price_impact_correlation": 0.85
+    },
+    {
+      "source_id": "twitter_solar_1",
+      "source_type": "twitter",
+      "timestamp": "2024-01-23T15:00:00Z",
+      "text": "Silver spot price up 3.2% on solar manufacturing demand. Industrial buyers scrambling for supply. This is the beginning of the solar silver super cycle.",
+      "author_reputation_score": 0.70,
+      "mention_count": 1200,
+      "price_impact_correlation": 0.72
+    }
+  ]
+}

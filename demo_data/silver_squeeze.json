@@ -1,0 +1,53 @@
+{
+  "narrative_id": "demo_silver_squeeze",
+  "narrative_title": "Reddit WallStreetSilver Squeeze Movement",
+  "historical_volume_75pct": 200.0,
+  "recent_peak_volume": 350.0,
+  "evidence": [
+    {
+      "source_id": "reddit_squeeze_1",
+      "source_type": "reddit",
+      "timestamp": "2024-01-24T12:00:00Z",
+      "text": "WallStreetSilver community hits 500k members! Physical silver squeeze gaining momentum. Dealers reporting record retail demand and supply shortages.",
+      "author_reputation_score": 0.85,
+      "mention_count": 5000,
+      "price_impact_correlation": 0.55
+    },
+    {
+      "source_id": "reddit_squeeze_2",
+      "source_type": "reddit",
+      "timestamp": "2024-01-24T11:00:00Z",
+      "text": "COMEX silver inventories dropping fast. If retail keeps buying at this pace, we'll see 2021 squeeze 2.0. Stack while you can!",
+      "author_reputation_score": 0.72,
+      "mention_count": 8000,
+      "price_impact_correlation": 0.45
+    },
+    {
+      "source_id": "twitter_squeeze_1",
+      "source_type": "twitter",
+      "timestamp": "2024-01-24T10:30:00Z",
+      "text": "#SilverSqueeze trending again. Retail investors coordinating physical silver purchases to expose paper market manipulation.",
+      "author_reputation_score": 0.68,
+      "mention_count": 12000,
+      "price_impact_correlation": 0.42
+    },
+    {
+      "source_id": "news_squeeze_1",
+      "source_type": "news",
+      "timestamp": "2024-01-23T20:00:00Z",
+      "text": "Bloomberg: Social media-driven silver buying frenzy causes premiums to spike 25% over spot. Mints struggle to keep up with retail demand.",
+      "author_reputation_score": 0.95,
+      "mention_count": 400,
+      "price_impact_correlation": 0.68
+    },
+    {
+      "source_id": "reddit_squeeze_3",
+      "source_type": "reddit",
+      "timestamp": "2024-01-23T16:00:00Z",
+      "text": "Just bought 100oz from my local dealer. He says he's never seen demand like this. Silver to $50 is inevitable.",
+      "author_reputation_score": 0.60,
+      "mention_count": 3000,
+      "price_impact_correlation": 0.38
+    }
+  ]
+}

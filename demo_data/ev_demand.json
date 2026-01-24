@@ -1,0 +1,53 @@
+{
+  "narrative_id": "demo_ev_demand",
+  "narrative_title": "Electric Vehicle Production Boosting Silver Usage",
+  "historical_volume_75pct": 45.0,
+  "recent_peak_volume": 85.0,
+  "evidence": [
+    {
+      "source_id": "news_ev_1",
+      "source_type": "news",
+      "timestamp": "2024-01-24T11:00:00Z",
+      "text": "Tesla's Gigafactory expansion to increase silver consumption by 15% annually. Each EV uses approximately 25-50 grams of silver in electrical components.",
+      "author_reputation_score": 0.90,
+      "mention_count": 180,
+      "price_impact_correlation": 0.75
+    },
+    {
+      "source_id": "news_ev_2",
+      "source_type": "news",
+      "timestamp": "2024-01-24T09:00:00Z",
+      "text": "IEA report: Global EV sales expected to reach 40 million units by 2030. Silver Institute projects 90 million additional ounces needed for automotive sector.",
+      "author_reputation_score": 0.93,
+      "mention_count": 220,
+      "price_impact_correlation": 0.80
+    },
+    {
+      "source_id": "twitter_ev_1",
+      "source_type": "twitter",
+      "timestamp": "2024-01-23T22:00:00Z",
+      "text": "Underrated silver thesis: EV + solar + 5G all require massive silver. This decade's copper story but more supply constrained.",
+      "author_reputation_score": 0.78,
+      "mention_count": 800,
+      "price_impact_correlation": 0.62
+    },
+    {
+      "source_id": "news_ev_3",
+      "source_type": "news",
+      "timestamp": "2024-01-23T19:00:00Z",
+      "text": "BYD and Chinese EV manufacturers ramp up production. Silver demand from automotive sector now second largest industrial application after solar.",
+      "author_reputation_score": 0.88,
+      "mention_count": 150,
+      "price_impact_correlation": 0.72
+    },
+    {
+      "source_id": "reddit_ev_1",
+      "source_type": "reddit",
+      "timestamp": "2024-01-23T14:00:00Z",
+      "text": "Analysis: EV transition is bullish for silver. Every major automaker committed to electrification by 2030. This is guaranteed demand growth.",
+      "author_reputation_score": 0.82,
+      "mention_count": 350,
+      "price_impact_correlation": 0.68
+    }
+  ]
+}
