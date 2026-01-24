@@ -8,6 +8,21 @@ import json
 from datetime import datetime
 import pandas as pd
 
+# Helper function for safe type conversion
+def safe_int(value, default=0):
+    """Safely convert value to int"""
+    try:
+        return int(value) if value is not None else default
+    except (ValueError, TypeError):
+        return default
+
+def safe_float(value, default=0.0):
+    """Safely convert value to float"""
+    try:
+        return float(value) if value is not None else default
+    except (ValueError, TypeError):
+        return default
+
 # Configuration
 API_BASE = "http://localhost:8000"
 
@@ -112,9 +127,17 @@ with tab1:
         # Narrative Overview
         st.subheader("📰 Active Narratives")
         if narratives:
-            df = pd.DataFrame(narratives)
-            df = df[["name", "phase", "strength", "sentiment", "article_count"]]
-            df.columns = ["Narrative", "Phase", "Strength", "Sentiment", "Articles"]
+            # Sanitize data for pandas
+            clean_narratives = []
+            for n in narratives:
+                clean_narratives.append({
+                    "Narrative": n.get("name", ""),
+                    "Phase": n.get("phase", ""),
+                    "Strength": safe_int(n.get("strength")),
+                    "Sentiment": safe_float(n.get("sentiment")),
+                    "Articles": safe_int(n.get("article_count"))
+                })
+            df = pd.DataFrame(clean_narratives)
             st.dataframe(df, width="stretch", hide_index=True)
         
         # Signal Details
@@ -158,10 +181,12 @@ with tab2:
                 
                 with st.expander(f"{phase_emoji} {n['name']} - {n['phase'].upper()}", expanded=True):
                     col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("Strength", f"{n['strength']}/100")
-                    col2.metric("Sentiment", f"{n['sentiment']:.2f}")
-                    col3.metric("Articles", n["article_count"])
-                    col4.metric("Age", f"{n.get('age_days', 0)} days")
+                    col1.metric("Strength", f"{safe_int(n.get('strength'))}/100")
+                    col2.metric("Sentiment", f"{safe_float(n.get('sentiment')):.2f}")
+                    col3.metric("Articles", safe_int(n.get("article_count")))
+                    # Safe type conversion for age_days
+                    age = safe_int(n.get('age_days'))
+                    col4.metric("Age", f"{age} days")
                     
                     if n.get("cluster_keywords"):
                         keywords = n["cluster_keywords"]
@@ -184,7 +209,7 @@ with tab2:
                         with fc1:
                             st.caption("Next Likely Phase")
                             next_phase = lf.get("next_phase", "Unknown")
-                            prob = lf.get("probability", 0) * 100
+                            prob = safe_float(lf.get("probability")) * 100
                             st.markdown(f"**{next_phase.upper()}** ({prob:.0f}%)")
                             st.caption(f"Reason: {lf.get('reasoning', 'N/A')}")
                             
@@ -192,8 +217,8 @@ with tab2:
                             st.caption("Projected Price Impact")
                             direction = pi.get("direction", "neutral")
                             arrow = "↗️" if direction == "up" else "↘️" if direction == "down" else "➡️"
-                            magnitude = pi.get("magnitude_percentage", 0)
-                            conf = pi.get("confidence", 0) * 100
+                            magnitude = safe_float(pi.get("magnitude_percentage"))
+                            conf = safe_float(pi.get("confidence")) * 100
                             st.markdown(f"**{arrow} {magnitude:.2f}%**")
                             st.caption(f"Confidence: {conf:.0f}%")
                             
@@ -263,7 +288,18 @@ with tab3:
         signals = response.get("signals", []) if isinstance(response, dict) else response
         
         if signals:
-            df = pd.DataFrame(signals)
+            # Sanitize data types for pandas
+            clean_signals = []
+            for s in signals:
+                clean_signals.append({
+                    "id": safe_int(s.get("id")),
+                    "timestamp": s.get("timestamp", ""),
+                    "action": s.get("action", ""),
+                    "confidence": safe_float(s.get("confidence")),
+                    "strength": safe_int(s.get("strength")),
+                    "price": safe_float(s.get("price"))
+                })
+            df = pd.DataFrame(clean_signals)
             st.dataframe(df, width="stretch", hide_index=True)
         else:
             st.info("No signal history available yet.")

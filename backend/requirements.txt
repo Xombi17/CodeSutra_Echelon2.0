@@ -1,3 +1,6 @@
+# Python Version Required: 3.11 or 3.12
+# Note: Python 3.13+ is not yet supported due to missing pre-built wheels for numpy, scikit-learn, and hdbscan
+
 # Core Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
