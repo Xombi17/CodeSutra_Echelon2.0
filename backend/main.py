@@ -304,9 +304,12 @@ async def get_signal_history(limit: int = 10):
     session = get_session()
     
     try:
+        # Convert limit to int if it's a string (FastAPI should handle this, but being explicit)
+        limit_value = int(limit) if isinstance(limit, str) else limit
+        
         signals = session.query(TradingSignal).order_by(
             TradingSignal.timestamp.desc()
-        ).limit(limit).all()
+        ).limit(limit_value).all()
         
         return {
             "signals": [s.to_dict() for s in signals],
@@ -322,9 +325,12 @@ async def get_prices(limit: int = 24):
     session = get_session()
     
     try:
+        # Convert limit to int if it's a string (FastAPI should handle this, but being explicit)
+        limit_value = int(limit) if isinstance(limit, str) else limit
+        
         prices = session.query(PriceData).order_by(
             PriceData.timestamp.desc()
-        ).limit(limit).all()
+        ).limit(limit_value).all()
         
         return {
             "prices": [p.to_dict() for p in prices],
@@ -627,9 +633,12 @@ async def get_user_scans(user_id: str, limit: int = 10):
     session = get_session()
     
     try:
+        # Convert limit to int if it's a string (FastAPI should handle this, but being explicit)
+        limit_value = int(limit) if isinstance(limit, str) else limit
+        
         scans = session.query(SilverScan).filter(
             SilverScan.user_id == user_id
-        ).order_by(SilverScan.created_at.desc()).limit(limit).all()
+        ).order_by(SilverScan.created_at.desc()).limit(limit_value).all()
         
         return {
             "user_id": user_id,
