@@ -231,6 +231,80 @@ class SilverScan(Base):
         }
 
 
+class AgentVote(Base):
+    """Store multi-agent voting history"""
+    __tablename__ = "agent_votes"
+    
+    id = Column(Integer, primary_key=True)
+    narrative_id = Column(Integer, ForeignKey("narratives.id"))
+    agent_name = Column(String(50), nullable=False)  # "fundamental", "sentiment", etc.
+    
+    # Vote details
+    phase_vote = Column(String(20), nullable=False)
+    strength_vote = Column(Integer, nullable=False)
+    confidence = Column(Float, nullable=False)
+    reasoning = Column(Text, nullable=True)
+    
+    # Metadata
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    debate_round = Column(Integer, default=1)
+    
+    # Relationships
+    narrative = relationship("Narrative", backref="agent_votes")
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "agent_name": self.agent_name,
+            "phase_vote": self.phase_vote,
+            "strength_vote": self.strength_vote,
+            "confidence": self.confidence,
+            "reasoning": self.reasoning,
+            "timestamp": self.timestamp.isoformat(),
+            "debate_round": self.debate_round
+        }
+
+
+class NarrativeSnapshot(Base):
+    """Track narrative evolution over time"""
+    __tablename__ = "narrative_snapshots"
+    
+    id = Column(Integer, primary_key=True)
+    narrative_id = Column(Integer, ForeignKey("narratives.id"))
+    
+    # Snapshot data
+    phase = Column(String(20), nullable=False)
+    strength = Column(Integer, nullable=False)
+    sentiment = Column(Float, nullable=False)
+    
+    # Metrics at this point
+    velocity = Column(Float)
+    price_correlation = Column(Float)
+    article_count = Column(Integer)
+    
+    # Analysis details
+    analysis_method = Column(String(20))  # "metrics", "multi-agent", "hybrid"
+    confidence = Column(Float)
+    agent_consensus_data = Column(JSON, nullable=True)  # Store agent votes
+    
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    narrative = relationship("Narrative", backref="snapshots")
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "phase": self.phase,
+            "strength": self.strength,
+            "sentiment": self.sentiment,
+            "velocity": self.velocity,
+            "price_correlation": self.price_correlation,
+            "analysis_method": self.analysis_method,
+            "confidence": self.confidence,
+            "timestamp": self.timestamp.isoformat()
+        }
+
+
 # Database initialization
 def init_database():
     """Initialize database and create tables"""

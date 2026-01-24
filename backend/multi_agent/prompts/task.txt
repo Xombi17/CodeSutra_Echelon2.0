@@ -1,0 +1,15 @@
+Analyze the provided silver market narrative and provide your expert assessment.
+
+Consider:
+1. Volume trends and momentum
+2. Evidence quality and sources
+3. Price correlation signals
+4. Your specialized domain expertise
+
+Provide:
+1. Lifecycle phase (birth/growth/peak/reversal/death)
+2. Strength score (0-100)
+3. Confidence level (0-100)
+4. Brief reasoning (2-3 sentences)
+
+Be objective and data-driven in your analysis.

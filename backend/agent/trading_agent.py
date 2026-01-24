@@ -294,6 +294,50 @@ Position Size: {signal.position_size*100:.0f}%
         
         return explanation
     
+    def get_detailed_explanation(self, signal: Signal, narrative: Narrative) -> Dict[str, Any]:
+        """
+        Generate detailed explanation with metrics breakdown
+        Inspired by nevan's explainer pattern
+        """
+        metrics = lifecycle_tracker.calculate_metrics(narrative)
+        
+        return {
+            "decision": signal.action,
+            "triggered_rule": f"{narrative.phase.upper()} phase AND strength > {config.trading.high_conviction_strength}",
+            "metrics_used": {
+                "velocity_increase": f"{metrics['velocity_increase']:.2%}",
+                "price_correlation": f"{metrics['price_correlation']:.2f}",
+                "sentiment_trend": metrics["sentiment_trend"],
+                "current_velocity": f"{metrics['current_velocity']:.2f} mentions/hour"
+            },
+            "phase_explanation": self._explain_phase(narrative, metrics),
+            "confidence_breakdown": {
+                "base_confidence": 0.85,
+                "conflict_penalty": -0.15 if signal.conflicts else 0.0,
+                "strength_adjustment": 0.0 if signal.strength > 70 else -0.1,
+                "final_confidence": signal.confidence
+            },
+            "reasoning": signal.reasoning
+        }
+    
+    def _explain_phase(self, narrative: Narrative, metrics: Dict[str, Any]) -> str:
+        """Explain why narrative is in current phase"""
+        from narrative.lifecycle_tracker import NarrativePhase
+        
+        phase = NarrativePhase(narrative.phase)
+        age_days = (datetime.utcnow() - narrative.birth_date).days
+        
+        if phase == NarrativePhase.BIRTH:
+            return f"New narrative detected {age_days} days ago"
+        elif phase == NarrativePhase.GROWTH:
+            return f"Velocity increased by {metrics['velocity_increase']:.1%}, indicating growing interest"
+        elif phase == NarrativePhase.PEAK:
+            return f"Price correlation at {metrics['price_correlation']:.2f}, suggesting peak influence"
+        elif phase == NarrativePhase.REVERSAL:
+            return f"Sentiment declining with {len(metrics.get('conflicts', []))} conflicting narratives"
+        else:
+            return f"No mentions in last 48 hours"
+    
     async def backtest(
         self,
         days_back: int = 30

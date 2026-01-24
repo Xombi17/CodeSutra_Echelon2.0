@@ -213,6 +213,33 @@ class LifecycleTracker:
         return (n1.sentiment > 0.1 and n2.sentiment < -0.1) or \
                (n1.sentiment < -0.1 and n2.sentiment > 0.1)
     
+    def _are_opposing_refined(self, n1: Narrative, n2: Narrative) -> bool:
+        """
+        Refined conflict detection (inspired by nevan branch)
+        Avoids false positives from volume mismatches
+        """
+        # Basic sentiment opposition check
+        if not ((n1.sentiment > 0.1 and n2.sentiment < -0.1) or
+                (n1.sentiment < -0.1 and n2.sentiment > 0.1)):
+            return False
+        
+        # NEW: Volume ratio check
+        if n1.article_count > 0 and n2.article_count > 0:
+            volume_ratio = min(n1.article_count, n2.article_count) / max(n1.article_count, n2.article_count)
+            if volume_ratio < 0.5:  # Volumes differ by more than 50%
+                return False  # Avoid "10 tweets vs 1000 articles" false conflicts
+        
+        # NEW: Both must be reasonably strong
+        if n1.strength < 60 or n2.strength < 60:
+            return False
+        
+        # NEW: Both must be active recently
+        cutoff = datetime.utcnow() - timedelta(days=3)
+        if n1.last_updated < cutoff or n2.last_updated < cutoff:
+            return False
+        
+        return True
+    
     def detect_phase_transition(
         self,
         narrative: Narrative

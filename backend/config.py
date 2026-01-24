@@ -104,6 +104,40 @@ class DatabaseConfig:
 
 
 @dataclass
+class MultiAgentConfig:
+    """Multi-agent system configuration"""
+    # Agent settings
+    num_agents: int = 5
+    debate_rounds_max: int = 3
+    consensus_threshold: float = 0.6  # 60% agreement needed
+    
+    # LLM settings
+    agent_temperature: float = 0.3  # Lower = more consistent
+    max_tokens_per_agent: int = 500
+    
+    # Fallback behavior
+    use_metrics_fallback: bool = True  # Use main's metrics if agents fail
+    fallback_confidence: float = 0.65
+
+
+@dataclass
+class HybridConfig:
+    """Hybrid engine configuration"""
+    # Weighting between methods
+    agent_weight: float = 0.6   # 60% weight on multi-agent
+    metrics_weight: float = 0.4  # 40% weight on metrics
+    
+    # Confidence thresholds
+    high_confidence_threshold: float = 0.75
+    use_agents_above_threshold: bool = True
+    
+    # Performance
+    enable_parallel_analysis: bool = True
+    cache_agent_results: bool = True
+    cache_ttl_minutes: int = 15
+
+
+@dataclass
 class AppConfig:
     """Main application configuration"""
     model: ModelConfig
@@ -111,6 +145,8 @@ class AppConfig:
     narrative: NarrativeConfig
     trading: TradingConfig
     database: DatabaseConfig
+    multi_agent: MultiAgentConfig
+    hybrid: HybridConfig
     
     # Application settings
     debug: bool = os.getenv("DEBUG", "False").lower() == "true"
@@ -128,7 +164,9 @@ def load_config() -> AppConfig:
         data=DataConfig(),
         narrative=NarrativeConfig(),
         trading=TradingConfig(),
-        database=DatabaseConfig()
+        database=DatabaseConfig(),
+        multi_agent=MultiAgentConfig(),
+        hybrid=HybridConfig()
     )
 
 

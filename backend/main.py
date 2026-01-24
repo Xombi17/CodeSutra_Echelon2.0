@@ -13,7 +13,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 # Import core modules
-from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan
+from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan, AgentVote
 from data_collection import collector
 from narrative.resource_manager import resource_manager
 from narrative.pattern_hunter import pattern_hunter
@@ -25,6 +25,10 @@ from orchestrator import orchestrator
 
 # Import vision module
 from vision import VisionPipeline, ValuationEngine
+
+# Import hybrid intelligence system
+from hybrid_engine import hybrid_engine
+from multi_agent.orchestrator import multi_agent_orchestrator
 
 
 # Background tasks
@@ -356,6 +360,111 @@ async def get_system_status():
             "timestamp": datetime.utcnow().isoformat()
         }
     
+    finally:
+        session.close()
+
+
+# =====================
+# Hybrid Intelligence Endpoints
+# =====================
+
+@app.post("/api/narratives/{narrative_id}/analyze-hybrid")
+async def analyze_narrative_hybrid(narrative_id: int):
+    """
+    Hybrid analysis combining metrics + multi-agent consensus
+    Returns comprehensive analysis with both quantitative and qualitative insights
+    """
+    try:
+        result = await hybrid_engine.analyze_narrative_hybrid(narrative_id)
+        return {"success": True, "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/narratives/analyze-multi-agent")
+async def analyze_multi_agent(narrative_data: Dict[str, Any]):
+    """
+    Pure multi-agent analysis (5 specialized agents debate)
+    """
+    try:
+        result = await multi_agent_orchestrator.analyze_narrative_multi(narrative_data)
+        return {"success": True, "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/trading-signal-enhanced")
+async def get_enhanced_signal():
+    """
+    Trading signal with multi-agent debate reasoning
+    """
+    session = get_session()
+    try:
+        narratives = session.query(Narrative).filter(
+            Narrative.phase != 'death'
+        ).order_by(Narrative.strength.desc()).all()
+        
+        if not narratives:
+            return {
+                "success": True,
+                "signal": {
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "strength": 0,
+                    "reasoning": "No active narratives",
+                    "position_size": 0.0
+                }
+            }
+        
+        # Analyze top narrative with hybrid engine
+        dominant = narratives[0]
+        hybrid_analysis = await hybrid_engine.analyze_narrative_hybrid(dominant.id)
+        
+        # Generate traditional signal
+        signal = await trading_agent.generate_signal()
+        
+        # Enhance with agent insights
+        enhanced_signal = {
+            "action": signal.action,
+            "confidence": signal.confidence,
+            "strength": signal.strength,
+            "reasoning": signal.reasoning,
+            "position_size": signal.position_size,
+            "dominant_narrative": signal.dominant_narrative,
+            "price": signal.price_at_signal,
+            "conflicts": len(signal.conflicts) if signal.conflicts else 0,
+            "agent_insights": {
+                "consensus": hybrid_analysis["agent_consensus"],
+                "minority_opinions": hybrid_analysis["minority_opinions"],
+                "agent_confidence": hybrid_analysis["confidence"]
+            },
+            "hybrid_analysis": {
+                "method": hybrid_analysis["analysis_method"],
+                "metrics": hybrid_analysis["metrics"]
+            }
+        }
+        
+        return {"success": True, "signal": enhanced_signal}
+    finally:
+        session.close()
+
+
+@app.get("/api/narratives/{narrative_id}/agent-history")
+async def get_agent_history(narrative_id: int):
+    """
+    Get historical agent votes for a narrative
+    """
+    session = get_session()
+    try:
+        votes = session.query(AgentVote).filter(
+            AgentVote.narrative_id == narrative_id
+        ).order_by(AgentVote.timestamp.desc()).limit(50).all()
+        
+        return {
+            "narrative_id": narrative_id,
+            "vote_count": len(votes),
+            "votes": [v.to_dict() for v in votes]
+        }
     finally:
         session.close()
 
