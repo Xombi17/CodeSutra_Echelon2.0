@@ -85,7 +85,7 @@ class Article(Base):
     
     # Metadata
     author = Column(String(200), nullable=True)
-    metadata = Column(JSON, nullable=True)  # Additional source-specific data
+    article_metadata = Column(JSON, nullable=True)  # Additional source-specific data
     
     # Relationships
     narrative = relationship("Narrative", back_populates="articles")
@@ -153,7 +153,7 @@ class TradingSignal(Base):
     volatility = Column(Float, nullable=True)
     
     # Metadata
-    metadata = Column(JSON, nullable=True)
+    signal_metadata = Column(JSON, nullable=True)
     
     __table_args__ = (
         CheckConstraint("action IN ('BUY', 'SELL', 'HOLD')", name="valid_action"),
@@ -247,9 +247,6 @@ def get_session():
 
 if __name__ == "__main__":
     # Test database creation
-    import os
-    os.makedirs("data", exist_ok=True)
-    
     engine = init_database()
     print(f"✅ Database initialized at: {config.database.sqlite_path}")
     print(f"📊 Tables created: {list(Base.metadata.tables.keys())}")

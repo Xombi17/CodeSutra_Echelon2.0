@@ -33,19 +33,23 @@ python-socketio==5.11.0
 websockets==12.0
 
 # Utilities
-numpy==1.26.3
+numpy==1.26.3  # MUST be < 2.0.0 for pandas/scikit-learn compatibility in this environment
 pandas==2.2.0
 python-dateutil==2.8.2
 pytz==2024.1
 
-# Image Processing (for CV module - Phase 8)
-Pillow==10.2.0
-opencv-python==4.9.0.80
+# Image Processing (Phase 8 - Scanner Bonus Feature - OPTIONAL)
+# These are not needed for core trading system (Phases 1-4)
+# SKIPPED: Python 3.14 has build issues with Pillow 10.2.0
+# If needed, install manually: pip install pillow opencv-python aiofiles
+opencv-python==4.8.1.78
+pillow==10.2.0
+aiofiles==23.2.1
 
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
-httpx==0.26.0
+httpx==0.25.2
 
 # Code Quality
 black==24.1.1

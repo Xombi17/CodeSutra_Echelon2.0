@@ -2,15 +2,18 @@
 SilverSentinel FastAPI Backend
 Main application with REST API and WebSocket support
 """
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
-from typing import List, Dict, Any
+import aiofiles
+import uuid
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 # Import core modules
-from database import init_database, get_session, Narrative, TradingSignal, PriceData
+from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan
 from data_collection import collector
 from narrative.resource_manager import resource_manager
 from narrative.pattern_hunter import pattern_hunter
@@ -18,6 +21,9 @@ from narrative.lifecycle_tracker import lifecycle_tracker
 from agent.trading_agent import trading_agent
 from agent.stability_monitor import stability_monitor
 from orchestrator import orchestrator
+
+# Import vision module
+from vision import VisionPipeline, ValuationEngine
 
 
 # Background tasks
@@ -258,6 +264,178 @@ async def get_system_status():
             "orchestrator": orchestrator_stats,
             "resource_manager": rm_status,
             "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    finally:
+        session.close()
+
+
+# =====================
+# Camera Scanning Endpoints
+# =====================
+
+# Initialize vision components
+vision_pipeline = VisionPipeline()
+valuation_engine = ValuationEngine()
+
+UPLOAD_DIR = Path("data/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.post("/api/scan")
+async def scan_silver_object(
+    image: UploadFile = File(...),
+    user_id: Optional[str] = None
+):
+    """
+    Analyze uploaded silver object image
+    
+    Returns comprehensive analysis including:
+    - Object type (jewelry, coin, bar)
+    - Purity (925, 950, 999)
+    - Estimated weight
+    - Valuation with range
+    - Quality assessment
+    - Market context from active narratives
+    """
+    try:
+        # Save uploaded file
+        file_id = str(uuid.uuid4())
+        file_extension = Path(image.filename).suffix
+        file_path = UPLOAD_DIR / f"{file_id}{file_extension}"
+        
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await image.read()
+            await f.write(content)
+        
+        # Run vision analysis
+        analysis = await vision_pipeline.analyze_image(str(file_path))
+        
+        # Calculate valuation
+        valuation = await valuation_engine.calculate_value(analysis)
+        
+        # Get market context (active narratives)
+        session = get_session()
+        active_narratives = session.query(Narrative).filter(
+            Narrative.phase.in_(['growth', 'peak'])
+        ).order_by(Narrative.strength.desc()).limit(3).all()
+        
+        market_context = "Current market: "
+        if active_narratives:
+            narrative = active_narratives[0]
+            market_context += f"{narrative.name} narrative ({narrative.phase} phase) - prices may {'+' if narrative.sentiment > 0 else '-'}{'rise' if narrative.sentiment > 0 else 'fall'} 3-5% in coming days"
+        else:
+            market_context += "Stable conditions, no dominant narratives detected"
+        
+        # Store scan in database
+        scan = SilverScan(
+            id=file_id,
+            user_id=user_id or "anonymous",
+            image_path=str(file_path),
+            detected_type=analysis.detected_type,
+            purity=analysis.purity,
+            estimated_weight=analysis.estimated_weight_g,
+            estimated_dimensions={
+                "width_mm": analysis.dimensions.width_mm,
+                "height_mm": analysis.dimensions.height_mm,
+                "thickness_mm": analysis.thickness_mm,
+                "area_mm2": analysis.dimensions.area_mm2
+            },
+            valuation_min=valuation.value_range[0],
+            valuation_max=valuation.value_range[1],
+            confidence=valuation.overall_confidence,
+            narrative_context={
+                "narratives": [n.to_dict() for n in active_narratives],
+                "market_summary": market_context
+            }
+        )
+        
+        session.add(scan)
+        session.commit()
+        scan_id = scan.id
+        session.close()
+        
+        # Return comprehensive result
+        return {
+            "scan_id": scan_id,
+            "detected_type": analysis.detected_type,
+            "purity": analysis.purity,
+            "purity_confidence": analysis.purity_confidence,
+            "estimated_weight_g": analysis.estimated_weight_g,
+            "dimensions": {
+                "width_mm": round(analysis.dimensions.width_mm, 2),
+                "height_mm": round(analysis.dimensions.height_mm, 2),
+                "thickness_mm": round(analysis.thickness_mm, 2)
+            },
+            "valuation": valuation_engine.format_valuation_for_display(valuation),
+            "quality": {
+                "score": analysis.quality_score,
+                "notes": analysis.quality_notes
+            },
+            "reference_object": {
+                "detected": analysis.reference_detected,
+                "type": analysis.reference_object.type if analysis.reference_object else None,
+                "calibration_quality": analysis.reference_object.confidence if analysis.reference_object else None
+            },
+            "overall_confidence": analysis.overall_confidence,
+            "market_context": market_context,
+            "created_at": datetime.utcnow().isoformat()
+        }
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@app.get("/api/scans/{scan_id}")
+async def get_scan_result(scan_id: str):
+    """Retrieve previous scan result by ID"""
+    session = get_session()
+    
+    try:
+        scan = session.query(SilverScan).filter(SilverScan.id == scan_id).first()
+        
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        return {
+            "scan_id": scan.id,
+            "detected_type": scan.detected_type,
+            "purity": scan.purity,
+            "weight_g": scan.estimated_weight,
+            "dimensions": scan.estimated_dimensions,
+            "valuation_range": {
+                "min": scan.valuation_min,
+                "max": scan.valuation_max,
+                "currency": "INR"
+            },
+            "confidence": scan.confidence,
+            "market_context": scan.narrative_context,
+            "created_at": scan.created_at.isoformat()
+        }
+    
+    finally:
+        session.close()
+
+
+@app.get("/api/scans/user/{user_id}")
+async def get_user_scans(user_id: str, limit: int = 10):
+    """Get scan history for a user"""
+    session = get_session()
+    
+    try:
+        scans = session.query(SilverScan).filter(
+            SilverScan.user_id == user_id
+        ).order_by(SilverScan.created_at.desc()).limit(limit).all()
+        
+        return {
+            "user_id": user_id,
+            "scans": [scan.to_dict() for scan in scans],
+            "count": len(scans)
         }
     
     finally:

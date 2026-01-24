@@ -253,7 +253,7 @@ class TradingAgent:
                 position_size=signal.position_size,
                 dominant_narrative_id=narrative_id,
                 price_at_signal=signal.price_at_signal,
-                metadata={"conflicts": signal.conflicts} if signal.conflicts else None
+                signal_metadata={"conflicts": signal.conflicts} if signal.conflicts else None
             )
             
             session.add(db_signal)

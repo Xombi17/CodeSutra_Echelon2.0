@@ -98,7 +98,7 @@ class TradingConfig:
 @dataclass
 class DatabaseConfig:
     """Database configuration"""
-    sqlite_path: str = "data/silversentinel.db"
+    sqlite_path: str = "silversentinel.db"  # In current working directory
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     cache_ttl_seconds: int = 3600  # 1 hour
 
