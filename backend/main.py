@@ -18,6 +18,7 @@ from data_collection import collector
 from narrative.resource_manager import resource_manager
 from narrative.pattern_hunter import pattern_hunter
 from narrative.lifecycle_tracker import lifecycle_tracker
+from narrative.forecaster import forecaster
 from agent.trading_agent import trading_agent
 from agent.stability_monitor import stability_monitor
 from orchestrator import orchestrator
@@ -121,6 +122,28 @@ async def get_narrative_detail(narrative_id: int):
         raise HTTPException(status_code=404, detail="Narrative not found")
     
     return status
+
+
+@app.get("/api/narratives/{narrative_id}/forecast")
+async def get_narrative_forecast(narrative_id: int):
+    """Get 48h forecast for a narrative"""
+    session = get_session()
+    try:
+        narrative = session.query(Narrative).filter(Narrative.id == narrative_id).first()
+        if not narrative:
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        lifecycle_pred = forecaster.predict_lifecycle(narrative)
+        price_pred = forecaster.predict_price_impact(narrative)
+        
+        return {
+            "narrative_id": narrative_id,
+            "lifecycle_forecast": lifecycle_pred,
+            "price_impact_forecast": price_pred,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    finally:
+        session.close()
 
 
 @app.get("/api/trading-signal")

@@ -171,6 +171,34 @@ with tab2:
                         
                         if isinstance(keywords, list):
                             st.markdown(f"**Keywords:** {', '.join(keywords[:5])}")
+                    
+                    # Forecast Section
+                    st.markdown("---")
+                    st.markdown("🔮 **AI Forecast (48h)**")
+                    try:
+                        forecast_resp = requests.get(f"{API_BASE}/api/narratives/{n['id']}/forecast").json()
+                        lf = forecast_resp.get("lifecycle_forecast", {})
+                        pi = forecast_resp.get("price_impact_forecast", {})
+                        
+                        fc1, fc2 = st.columns(2)
+                        with fc1:
+                            st.caption("Next Likely Phase")
+                            next_phase = lf.get("next_phase", "Unknown")
+                            prob = lf.get("probability", 0) * 100
+                            st.markdown(f"**{next_phase.upper()}** ({prob:.0f}%)")
+                            st.caption(f"Reason: {lf.get('reasoning', 'N/A')}")
+                            
+                        with fc2:
+                            st.caption("Projected Price Impact")
+                            direction = pi.get("direction", "neutral")
+                            arrow = "↗️" if direction == "up" else "↘️" if direction == "down" else "➡️"
+                            magnitude = pi.get("magnitude_percentage", 0)
+                            conf = pi.get("confidence", 0) * 100
+                            st.markdown(f"**{arrow} {magnitude:.2f}%**")
+                            st.caption(f"Confidence: {conf:.0f}%")
+                            
+                    except Exception as e:
+                        st.caption("Prediction unavailable")
         else:
             st.info("No narratives detected yet. Run the narrative discovery pipeline first.")
             
