@@ -18,7 +18,7 @@ This document explains the purpose and functionality of each folder and file in 
 
 ## 🎯 Overview
 
-The backend is a **FastAPI-based application** that provides real-time silver market intelligence using AI-powered narrative tracking, trading signal generation, and physical silver valuation through computer vision. It combines multiple data sources (news, social media, price data) to discover and track market narratives that influence silver prices.
+The backend is a **FastAPI-based application** that provides real-time silver market intelligence. It uses AI-powered narrative tracking to discover and monitor market patterns. The system generates trading signals based on these narratives and can value physical silver items through computer vision. It combines multiple data sources (news, social media, price data) to track market narratives that influence silver prices.
 
 ---
 
@@ -591,7 +591,7 @@ This folder implements computer vision capabilities for analyzing images of phys
 
 7. **calculate_weight() Method**:
    - Derives from dimensions + purity + silver density
-   - Silver density: 10.49 g/cm³
+   - Silver density: 10.49 g/cm³ (source: standard silver density at 20°C)
    - Adjusts for hollow items or gemstone inclusions
    - Returns estimated weight in grams
 
@@ -619,7 +619,7 @@ Calculate Weight → Send to Valuation Engine
 
 2. **get_spot_price() Method**:
    - Fetches current silver spot price from Yahoo Finance
-   - Converts to ₹/gram (Indian Rupees)
+   - Converts to ₹/gram (Indian Rupees - configurable for other currencies)
    - Caches price for 1 hour to reduce API calls
    - Falls back to recent average if fetch fails
 
@@ -986,6 +986,5 @@ Edit `config.py` to customize:
 
 ---
 
-**Last Updated**: 2026-01-24  
 **Version**: 1.0  
 **Maintainer**: CodeSutra Echelon 2.0 Team
