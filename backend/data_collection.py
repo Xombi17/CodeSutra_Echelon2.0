@@ -232,6 +232,20 @@ class DataCollectionOrchestrator:
         self.news_collector = NewsCollector()
         self.reddit_collector = RedditCollector()
         self.price_collector = PriceCollector()
+        
+        # New collectors
+        try:
+            from collectors import TwitterCollector, StockTwitsCollector, TelegramCollector
+            self.twitter_collector = TwitterCollector()
+            self.stocktwits_collector = StockTwitsCollector()
+            self.telegram_collector = TelegramCollector()
+            self._has_new_collectors = True
+        except Exception as e:
+            print(f"⚠️ New collectors not available: {e}")
+            self.twitter_collector = None
+            self.stocktwits_collector = None
+            self.telegram_collector = None
+            self._has_new_collectors = False
     
     async def collect_all(
         self,
@@ -246,25 +260,63 @@ class DataCollectionOrchestrator:
         """
         print("🔄 Collecting data from all sources...")
         
-        # Run collections in parallel
-        results = await asyncio.gather(
+        # Build collection tasks
+        tasks = [
             self.news_collector.fetch_articles(days_back=news_days_back),
             self.reddit_collector.fetch_posts(),
             self.price_collector.fetch_price_history(period=price_period),
-            return_exceptions=True
-        )
+        ]
         
+        # Add new collectors if available
+        if self._has_new_collectors:
+            if self.twitter_collector:
+                tasks.append(self.twitter_collector.fetch_tweets(max_tweets=100, days_back=news_days_back))
+            if self.stocktwits_collector:
+                tasks.append(self.stocktwits_collector.fetch_messages())
+            if self.telegram_collector:
+                tasks.append(self.telegram_collector.fetch_messages(days_back=news_days_back))
+        
+        # Run collections in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Extract results (handle variable number of collectors)
         articles = results[0] if not isinstance(results[0], Exception) else []
         posts = results[1] if not isinstance(results[1], Exception) else []
         prices = results[2] if not isinstance(results[2], Exception) else []
         
-        print(f"✅ Collected: {len(articles)} articles, {len(posts)} posts, {len(prices)} price points")
+        # Add new source results
+        tweets = []
+        stocktwits_msgs = []
+        telegram_msgs = []
+        
+        if self._has_new_collectors and len(results) > 3:
+            idx = 3
+            if self.twitter_collector:
+                tweets = results[idx] if not isinstance(results[idx], Exception) else []
+                idx += 1
+            if self.stocktwits_collector:
+                stocktwits_msgs = results[idx] if not isinstance(results[idx], Exception) else []
+                idx += 1
+            if self.telegram_collector:
+                telegram_msgs = results[idx] if not isinstance(results[idx], Exception) else []
+        
+        # Combine all articles/posts
+        all_content = articles + posts + tweets + stocktwits_msgs + telegram_msgs
+        
+        print(f"✅ Collected: {len(articles)} articles, {len(posts)} posts, {len(tweets)} tweets, {len(stocktwits_msgs)} StockTwits, {len(telegram_msgs)} Telegram, {len(prices)} price points")
         
         return {
-            "articles": articles,
-            "posts": posts,
+            "articles": all_content,  # Combined all text sources
+            "posts": [],  # Deprecated - all in articles now
             "prices": prices,
-            "collected_at": datetime.now()
+            "collected_at": datetime.now(),
+            "source_breakdown": {
+                "news": len(articles),
+                "reddit": len(posts),
+                "twitter": len(tweets),
+                "stocktwits": len(stocktwits_msgs),
+                "telegram": len(telegram_msgs)
+            }
         }
     
     async def save_to_database(self, data: Dict[str, Any]):

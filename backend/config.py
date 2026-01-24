@@ -45,6 +45,16 @@ class DataConfig:
     reddit_client_secret: str = os.getenv("REDDIT_CLIENT_SECRET", "")
     reddit_user_agent: str = "SilverSentinel/1.0"
     
+    # Twitter/X API
+    twitter_api_key: str = os.getenv("TWITTER_API_KEY", "")
+    twitter_api_secret: str = os.getenv("TWITTER_API_SECRET", "")
+    twitter_access_token: str = os.getenv("TWITTER_ACCESS_TOKEN", "")
+    twitter_access_secret: str = os.getenv("TWITTER_ACCESS_SECRET", "")
+    
+    # Telegram API
+    telegram_api_id: str = os.getenv("TELEGRAM_API_ID", "")
+    telegram_api_hash: str = os.getenv("TELEGRAM_API_HASH", "")
+    
     # Yahoo Finance (no key needed)
     yfinance_symbol: str = "SI=F"  # Silver futures
     
@@ -52,6 +62,19 @@ class DataConfig:
     high_volatility_interval: int = 10
     medium_volatility_interval: int = 30
     low_volatility_interval: int = 120
+    
+    # Source weighting for narrative discovery
+    source_weights: Dict[str, float] = None
+    
+    def __post_init__(self):
+        if self.source_weights is None:
+            self.source_weights = {
+                "twitter": 1.5,      # High influence
+                "stocktwits": 1.3,   # Finance-focused with sentiment
+                "news": 1.2,         # Professional journalism
+                "reddit": 1.0,       # Baseline community sentiment
+                "telegram": 0.8,     # Early signals but noisy
+            }
 
 
 @dataclass

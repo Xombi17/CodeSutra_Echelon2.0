@@ -25,6 +25,9 @@ yfinance==0.2.35
 praw==7.7.1
 requests==2.31.0
 beautifulsoup4==4.12.3
+tweepy==4.14.0          # Twitter API v2  
+telethon==1.36.0        # Telegram client
+aiohttp==3.9.1          # Async HTTP for StockTwits
 
 # Database
 sqlalchemy==2.0.25
