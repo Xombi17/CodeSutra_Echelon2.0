@@ -405,7 +405,7 @@ main.py → Serves REST endpoints
 | `narrative/pattern_hunter.py` | **PS 5** | Unsupervised Pattern Discovery |
 | `narrative/lifecycle_tracker.py` | **PS 6** | Sentiment Lifecycle Tracking |
 | `agent/stability_monitor.py` | **PS 14** | Overconfidence Detection |
-| `vision/` (entire folder) | **Phase 8** | Computer Vision Bonus Feature |
+| `vision/` (entire folder) | **Bonus Feature** | Computer Vision Scanner (Phase 8) |
 
 ---
 
@@ -420,7 +420,7 @@ pip install -r requirements.txt
 ### 2. Configure Environment
 ```bash
 cp .env.example .env
-nano .env  # Add your GROQ_API_KEY
+nano .env  # Add your API keys (GROQ_API_KEY required, NewsAPI/Reddit optional)
 ```
 
 ### 3. Initialize Database
