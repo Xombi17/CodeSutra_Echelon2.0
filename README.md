@@ -240,6 +240,7 @@ kwargs = {"model": "gpt-oss:20b", "messages": messages}
 ```
 SilverSentinel/
 ├─ backend/
+│  ├─ BACKEND_STRUCTURE.md      # 📚 Detailed folder documentation
 │  ├─ config.py                 # Configuration management
 │  ├─ database.py               # SQLAlchemy models
 │  ├─ orchestrator.py           # Multi-model AI orchestration
@@ -258,6 +259,10 @@ SilverSentinel/
 │  │  ├─ trading_agent.py      # Decision engine
 │  │  └─ stability_monitor.py  # PS 14 implementation
 │  │
+│  ├─ vision/                   # Phase 8: Physical silver scanner
+│  │  ├─ vision_pipeline.py    # Image analysis
+│  │  └─ valuation_engine.py   # Market value calculation
+│  │
 │  └─ tests/
 │     └─ test_integration.py   # End-to-end tests
 │
@@ -271,6 +276,8 @@ SilverSentinel/
 ├─ start_backend.sh             # Quick start script
 └─ README.md                    # This file
 ```
+
+> 📖 **For detailed backend architecture documentation**, see [`backend/BACKEND_STRUCTURE.md`](backend/BACKEND_STRUCTURE.md)
 
 ---
 
