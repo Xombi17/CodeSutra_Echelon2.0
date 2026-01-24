@@ -237,6 +237,8 @@ kwargs = {"model": "gpt-oss:20b", "messages": messages}
 
 ## 📁 Project Structure
 
+> **📖 For detailed explanation of backend folders, see [BACKEND_STRUCTURE.md](BACKEND_STRUCTURE.md)**
+
 ```
 SilverSentinel/
 ├─ backend/
@@ -267,6 +269,7 @@ SilverSentinel/
 │
 ├─ data/                        # SQLite database
 ├─ .env                         # Environment variables
+├─ BACKEND_STRUCTURE.md         # Backend folder explanation
 ├─ setup.sh                     # Automated setup script
 ├─ start_backend.sh             # Quick start script
 └─ README.md                    # This file
@@ -380,6 +383,7 @@ Problem Domain: Silver Prediction Model
 ## 📞 Support
 
 **Documentation**: See `/docs` folder  
+**Backend Structure**: [BACKEND_STRUCTURE.md](BACKEND_STRUCTURE.md) - Detailed explanation of backend folders  
 **API Docs**: http://localhost:8000/docs  
 **Model Config**: `docs/MODEL_CONFIG.md`
 
