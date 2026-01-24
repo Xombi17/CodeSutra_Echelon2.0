@@ -138,7 +138,7 @@ with tab1:
                     "Articles": safe_int(n.get("article_count"))
                 })
             df = pd.DataFrame(clean_narratives)
-            st.dataframe(df, width="stretch", hide_index=True)
+            st.dataframe(df, use_container_width=True, hide_index=True)
         
         # Signal Details
         st.subheader("📈 Current Trading Signal")
@@ -300,7 +300,7 @@ with tab3:
                     "price": safe_float(s.get("price"))
                 })
             df = pd.DataFrame(clean_signals)
-            st.dataframe(df, width="stretch", hide_index=True)
+            st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("No signal history available yet.")
     except Exception as e:
@@ -345,7 +345,7 @@ with tab4:
                 image_data = uploaded_file.getvalue()
                 image_name = uploaded_file.name
                 try:
-                    st.image(uploaded_file, caption="Uploaded Image", width="stretch")
+                    st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
                 except ImportError:
                     st.info(f"📷 Image uploaded: {uploaded_file.name} ({len(image_data)/1024:.1f} KB)")
         
