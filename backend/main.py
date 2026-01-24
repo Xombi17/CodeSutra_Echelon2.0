@@ -26,6 +26,10 @@ from orchestrator import orchestrator
 # Import vision module
 from vision import VisionPipeline, ValuationEngine
 
+# Import multi-agent and vector store
+from multi_agent import MultiAgentOrchestrator
+from vectorstore import SilverVectorStore
+
 
 # Background tasks
 background_tasks = set()
@@ -39,6 +43,22 @@ async def lifespan(app: FastAPI):
     # Initialize database
     init_database()
     print("✅ Database initialized")
+    
+    # Initialize vector store
+    try:
+        app.state.vectorstore = SilverVectorStore()
+        print("✅ Pinecone Vector Store initialized")
+    except Exception as e:
+        print(f"⚠️ Vector store initialization failed: {e}")
+        app.state.vectorstore = None
+    
+    # Initialize multi-agent orchestrator
+    try:
+        app.state.multi_agent = MultiAgentOrchestrator()
+        print("✅ Multi-Agent Orchestrator initialized")
+    except Exception as e:
+        print(f"⚠️ Multi-agent initialization failed: {e}")
+        app.state.multi_agent = None
     
     # Start background monitoring (optional - uncomment for production)
     # Start background monitoring (optional - uncomment for production)
@@ -262,6 +282,58 @@ async def trigger_lifecycle_tracking():
         "message": "Lifecycle tracking completed",
         "timestamp": datetime.utcnow().isoformat()
     }
+
+
+@app.post("/api/multi-agent/analyze")
+async def multi_agent_analysis(request: Dict[str, Any]):
+    """
+    Multi-agent analysis of a narrative
+    
+    Request body:
+    {
+        "narrative_id": "string",
+        "narrative_title": "string",
+        "evidence": [{"source": "...", "content": "..."}]
+    }
+    """
+    if not app.state.multi_agent:
+        raise HTTPException(status_code=503, detail="Multi-agent system not available")
+    
+    try:
+        narrative_id = request.get("narrative_id", "unknown")
+        narrative_title = request.get("narrative_title", "")
+        evidence = request.get("evidence", [])
+        
+        result = app.state.multi_agent.analyze_narrative(
+            narrative_id=narrative_id,
+            narrative_title=narrative_title,
+            evidence=evidence
+        )
+        
+        return {
+            "success": True,
+            "result": result,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/vectorstore/search")
+async def vectorstore_search(query: str, limit: int = 5):
+    """Search vector store for relevant evidence"""
+    if not app.state.vectorstore:
+        raise HTTPException(status_code=503, detail="Vector store not available")
+    
+    try:
+        results = app.state.vectorstore.search(query, n_results=limit)
+        return {
+            "success": True,
+            "results": results,
+            "count": len(results)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/stats")
