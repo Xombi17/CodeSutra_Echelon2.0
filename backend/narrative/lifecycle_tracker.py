@@ -197,8 +197,9 @@ class LifecycleTracker:
                     "narrative_id": other.id,
                     "narrative_name": other.name,
                     "strength_diff": strength_diff,
-                    "winner": narrative if narrative.strength > other.strength else other
+                    "winner": narrative.name if narrative.strength > other.strength else other.name
                 })
+
         
         return conflicts
     

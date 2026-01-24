@@ -40,8 +40,9 @@ async def lifespan(app: FastAPI):
     print("✅ Database initialized")
     
     # Start background monitoring (optional - uncomment for production)
-    # task = asyncio.create_task(run_continuous_monitoring())
-    # background_tasks.add(task)
+    # Start background monitoring (optional - uncomment for production)
+    task = asyncio.create_task(run_continuous_monitoring())
+    background_tasks.add(task)
     
     yield
     
@@ -238,6 +239,72 @@ async def trigger_lifecycle_tracking():
         "message": "Lifecycle tracking completed",
         "timestamp": datetime.utcnow().isoformat()
     }
+
+
+@app.get("/api/stats")
+async def get_stats():
+    """Get system statistics"""
+    session = get_session()
+    
+    try:
+        narrative_count = session.query(Narrative).count()
+        active_narratives = session.query(Narrative).filter(Narrative.phase != 'death').count()
+        signal_count = session.query(TradingSignal).count()
+        price_count = session.query(PriceData).count()
+        scan_count = session.query(SilverScan).count()
+        
+        # Get orchestrator stats
+        orch_stats = orchestrator.get_stats()
+        
+        return {
+            "narratives": {
+                "total": narrative_count,
+                "active": active_narratives
+            },
+            "signals": signal_count,
+            "prices": price_count,
+            "scans": scan_count,
+            "orchestrator": orch_stats,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    finally:
+        session.close()
+
+
+@app.get("/api/signals/history")
+async def get_signal_history(limit: int = 10):
+    """Get trading signal history"""
+    session = get_session()
+    
+    try:
+        signals = session.query(TradingSignal).order_by(
+            TradingSignal.timestamp.desc()
+        ).limit(limit).all()
+        
+        return {
+            "signals": [s.to_dict() for s in signals],
+            "count": len(signals)
+        }
+    finally:
+        session.close()
+
+
+@app.get("/api/prices")
+async def get_prices(limit: int = 24):
+    """Get recent price data"""
+    session = get_session()
+    
+    try:
+        prices = session.query(PriceData).order_by(
+            PriceData.timestamp.desc()
+        ).limit(limit).all()
+        
+        return {
+            "prices": [p.to_dict() for p in prices],
+            "count": len(prices)
+        }
+    finally:
+        session.close()
 
 
 @app.get("/api/status")

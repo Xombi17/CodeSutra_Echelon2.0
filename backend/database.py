@@ -195,8 +195,9 @@ class SilverScan(Base):
     """Physical silver scans (CV feature - Phase 8)"""
     __tablename__ = "scans"
     
-    id = Column(Integer, primary_key=True)
+    id = Column(String(100), primary_key=True)  # UUID string
     user_id = Column(String(100), nullable=False)
+
     
     image_path = Column(String(500), nullable=False)
     detected_type = Column(String(100), nullable=True)  # chain, coin, bar, jewelry
