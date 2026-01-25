@@ -294,7 +294,7 @@ Position Size: {signal.position_size*100:.0f}%
 📊 Reasoning:
 {signal.reasoning}
 
-💰 Current Price: ₹{signal.price_at_signal:,.0f}/kg
+💰 Current Price: {f"₹{signal.price_at_signal:,.0f}/kg" if signal.price_at_signal is not None else "N/A"}
 
 {f"⚠️ Conflicts: {len(signal.conflicts)} competing narrative(s)" if signal.conflicts else "✅ No conflicts detected"}
         """.strip()

@@ -38,7 +38,7 @@ from vision import VisionPipeline, ValuationEngine
 
 # Import database utilities
 print("Importing Database..."); sys.stdout.flush()
-from database import get_session
+from database import get_session, Narrative, PriceData
 
 # Import hybrid intelligence system
 print("DEBUG: Importing hybrid_engine..."); sys.stdout.flush()

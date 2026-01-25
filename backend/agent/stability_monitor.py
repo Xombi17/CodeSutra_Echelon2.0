@@ -48,7 +48,8 @@ class StabilityMonitor:
                     "score": 50,
                     "warning": "Insufficient data",
                     "recommendation": "Collect more price history",
-                    "volatility": None
+                    "volatility": None,
+                    "risk_level": "UNKNOWN"
                 }
             
             price_values = [p.price for p in prices]
