@@ -1,42 +1,55 @@
-"""
-SilverSentinel FastAPI Backend
-Main application with REST API and WebSocket support
-"""
+print("--- STARTING MAIN.PY IMPORT PHASE ---")
 import os
+print("Importing FastAPI...")
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 import aiofiles
 import uuid
+print("Importing Path...")
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 # Import core modules
+print("DEBUG: Importing database...")
 from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan, AgentVote
+print("DEBUG: Importing data_collection...")
 from data_collection import collector
+print("DEBUG: Importing resource_manager...")
 from narrative.resource_manager import resource_manager
+print("DEBUG: Importing pattern_hunter...")
 from narrative.pattern_hunter import pattern_hunter
+print("DEBUG: Importing lifecycle_tracker...")
 from narrative.lifecycle_tracker import lifecycle_tracker
+print("DEBUG: Importing forecaster...")
 from narrative.forecaster import forecaster
+print("DEBUG: Importing trading_agent...")
 from agent.trading_agent import trading_agent
+print("DEBUG: Importing stability_monitor...")
 from agent.stability_monitor import stability_monitor
+print("DEBUG: Importing orchestrator...")
 from orchestrator import orchestrator
 
 # Import vision module
+print("DEBUG: Importing vision...")
 from vision import VisionPipeline, ValuationEngine
 
 # Import hybrid intelligence system
+print("DEBUG: Importing hybrid_engine...")
 from hybrid_engine import hybrid_engine
+print("DEBUG: Importing multi_agent orchestrator...")
 from multi_agent.orchestrator import multi_agent_orchestrator
 
 # Import authentication
+print("DEBUG: Importing auth...")
 from auth import (
     create_user, authenticate_user, create_access_token,
     require_auth, optional_auth, TokenData
 )
+print("DEBUG: All imports complete!")
 
 
 # Pydantic models for request validation
