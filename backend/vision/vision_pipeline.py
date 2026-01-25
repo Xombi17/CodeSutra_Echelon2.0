@@ -505,25 +505,10 @@ class VisionPipeline:
         )
         
         return round(score, 2)
-
-"""
-ADD THIS HELPER METHOD TO THE BOTTOM OF YOUR EXISTING vision_pipeline.py
-
-Location: After the VisionPipeline class definition, before if __name__ == "__main__"
-"""
-
-# ... your existing VisionPipeline class code stays the same ...
-
-
-# ADD THIS METHOD TO VisionPipeline CLASS:
-class VisionPipeline:
-    # ... all your existing methods stay the same ...
     
     def get_measurement_issues(self, analysis: VisionAnalysisResult) -> list[str]:
         """
-        NEW METHOD - Detect specific measurement issues for uncertainty reporting
-        
-        Add this method to your existing VisionPipeline class
+        Detect specific measurement issues for uncertainty reporting
         """
         issues = []
         
@@ -555,6 +540,3 @@ class VisionPipeline:
             issues.append("Poor condition detected - valuation reduced")
         
         return issues
-
-
-# That's it! Only this one method needs to be added to your existing class        
