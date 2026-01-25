@@ -22,12 +22,16 @@ COPY ./requirements.txt /code/requirements.txt
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# Copy application code
-COPY . /code
-
 # Create a non-root user (Hugging Face security best practice)
-RUN useradd -m -u 1000 user
+# Check if user 1000 exists, if not create it
+RUN id -u 1000 &>/dev/null || useradd -m -u 1000 user
+
+# Switch to user
 USER user
+
+# Copy application code with ownership (Crucial for SQLite write permissions)
+COPY --chown=user . /code
+
 
 
 # Expose the port
