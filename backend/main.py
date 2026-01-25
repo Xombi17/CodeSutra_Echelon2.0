@@ -64,23 +64,49 @@ background_tasks: set = set()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    print("  Starting SilverSentinel backend...")
+    """Application lifespan events with enhanced diagnostic logging"""
+    print("🚀 [STARTUP] SilverSentinel backend is initializing...")
     
-    # Initialize database
-    init_database()
-    print("  Database initialized")
-    
-    # Start background monitoring (optional - uncomment for production)
-    # Start background monitoring (optional - uncomment for production)
-    task = asyncio.create_task(run_continuous_monitoring())
-    background_tasks.add(task)
-    task.add_done_callback(lambda t: background_tasks.discard(t))  # Cleanup on completion
-    
+    try:
+        # Step 1: Initialize database
+        print("📁 [STARTUP] Initializing database...")
+        init_database()
+        print("✅ [STARTUP] Database initialized successfully")
+        
+        # Step 2: Validate HDBSCAN (Critical check for build issues)
+        print("🧠 [STARTUP] Testing HDBSCAN/Clustering engine...")
+        try:
+            import hdbscan
+            import numpy as np
+            test_data = np.random.rand(10, 2)
+            hdbscan.HDBSCAN(min_cluster_size=2).fit(test_data)
+            print("✅ [STARTUP] HDBSCAN validated")
+        except Exception as e:
+            print(f"⚠️ [STARTUP] HDBSCAN warning: {e}. Narrative discovery may fail.")
+
+        # Step 3: Start background monitoring with a delay
+        # This prevents blocking the initial server health check
+        async def delayed_monitoring():
+            print("⏳ [STARTUP] Deferring background tasks for 10 seconds to allow health check...")
+            await asyncio.sleep(10)
+            print("🤖 [STARTUP] Starting continuous monitoring task...")
+            await run_continuous_monitoring()
+
+        task = asyncio.create_task(delayed_monitoring())
+        background_tasks.add(task)
+        task.add_done_callback(lambda t: background_tasks.discard(t))
+        print("📡 [STARTUP] Background tasks scheduled")
+        
+    except Exception as e:
+        print(f"❌ [STARTUP] CRITICAL FAILURE DURING LIFESPAN: {e}")
+        import traceback
+        traceback.print_exc()
+
+    print("🌟 [STARTUP] Lifespan complete - server is ready to accept connections")
     yield
     
     # Cleanup
-    print("  Shutting down SilverSentinel...")
+    print("🛑 [SHUTDOWN] Shutting down SilverSentinel...")
     for task in background_tasks:
         task.cancel()
 
@@ -107,12 +133,13 @@ app.add_middleware(
 
 
 # =====================
-# REST API Endpoints
+# Health & Status Endpoints
 # =====================
 
 @app.get("/")
-async def root():
-    """Health check"""
+@app.get("/health")
+async def health_check():
+    """Hugging Face Space health check endpoint"""
     return {
         "status": "online",
         "service": "SilverSentinel",
