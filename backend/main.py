@@ -256,6 +256,49 @@ async def trigger_narrative_discovery():
     }
 
 
+@app.get("/api/narratives/discover")
+async def discover_narratives_endpoint(
+    days_back: int = 7,
+    top_n: int = 5
+):
+    """
+    Discover top narratives from collected articles using AI-powered pipeline
+    
+    Query params:
+    - days_back: Days of articles to analyze (default: 7)
+    - top_n: Number of top narratives to return (default: 5)
+    
+    Returns:
+        Dict with discovered narratives and processing metadata
+    """
+    try:
+        # Import discovery engine
+        from narrative.narrative_discovery import NarrativeDiscoveryEngine
+        from data_collection import format_for_narrative_discovery
+        
+        # Collect data
+        data = await collector.collect_all(news_days_back=days_back)
+        
+        # Format for discovery
+        articles = format_for_narrative_discovery(data)
+        
+        # Run discovery pipeline
+        engine = NarrativeDiscoveryEngine()
+        narratives, metadata = await engine.discover_narratives(articles, top_n=top_n)
+        
+        return {
+            "success": True,
+            "narratives": [n.to_dict() for n in narratives],
+            "metadata": metadata,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Narrative discovery failed: {str(e)}")
+
+
 @app.post("/api/track-lifecycles")
 async def trigger_lifecycle_tracking():
     """Manually trigger lifecycle tracking"""

@@ -3,7 +3,7 @@ Pattern Hunter (PS 5 Implementation)
 Unsupervised narrative discovery through clustering
 """
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from sklearn.feature_extraction.text import TfidfVectorizer
 from hdbscan import HDBSCAN

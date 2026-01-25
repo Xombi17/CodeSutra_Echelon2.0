@@ -6,7 +6,6 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import requests
-import praw
 import yfinance as yf
 from config import config
 from database import get_session, Article, PriceData
@@ -93,136 +92,95 @@ class NewsCollector:
         ]
 
 
-class RedditCollector:
-    """Collect discussions from Reddit"""
-    
-    def __init__(self):
-        self.client_id = config.data.reddit_client_id
-        self.client_secret = config.data.reddit_client_secret
-        self.user_agent = config.data.reddit_user_agent
-        
-        if self.client_id and self.client_secret:
-            self.reddit = praw.Reddit(
-                client_id=self.client_id,
-                client_secret=self.client_secret,
-                user_agent=self.user_agent
-            )
-        else:
-            self.reddit = None
-    
-    async def fetch_posts(
-        self,
-        subreddits: List[str] = ["wallstreetbets", "investing", "commodities"],
-        limit: int = 50
-    ) -> List[Dict[str, Any]]:
-        """
-        Fetch Reddit posts about silver
-        
-        Args:
-            subreddits: List of subreddits to search
-            limit: Maximum posts per subreddit
-        """
-        if not self.reddit:
-            print("⚠️ Reddit API not configured, using mock data")
-            return self._mock_posts()
-        
-        posts = []
-        keywords = ["silver", "SLV", "AG", "silver market"]
-        
-        try:
-            for subreddit_name in subreddits:
-                subreddit = self.reddit.subreddit(subreddit_name)
-                
-                # Search recent posts
-                for post in subreddit.search(" OR ".join(keywords), time_filter="week", limit=limit):
-                    if any(kw.lower() in post.title.lower() or kw.lower() in post.selftext.lower() 
-                           for kw in keywords):
-                        posts.append({
-                            "title": post.title,
-                            "content": post.selftext[:500],  #Truncate
-                            "url": f"https://reddit.com{post.permalink}",
-                            "source": f"reddit:{subreddit_name}",
-                            "published_at": datetime.fromtimestamp(post.created_utc),
-                            "author": str(post.author) if post.author else "deleted",
-                            "metadata": {
-                                "score": post.score,
-                                "num_comments": post.num_comments
-                            }
-                        })
-            
-            return posts
-        
-        except Exception as e:
-            print(f"❌ Reddit error: {e}")
-            return []
-    
-    def _mock_posts(self) -> List[Dict[str, Any]]:
-        """Generate mock Reddit posts"""
-        return [
-            {
-                "title": "Silver to the moon? 🚀",
-                "content": "Industrial demand at all-time high, wedding season coming...",
-                "url": "https://reddit.com/r/wallstreetbets/mock1",
-                "source": "reddit:wallstreetbets",
-                "published_at": datetime.now() - timedelta(hours=1),
-                "author": "SilverBull2024",
-                "metadata": {"score": 245, "num_comments": 89}
-            }
-        ]
-
 
 class PriceCollector:
     """Collect silver price data"""
     
     def __init__(self):
-        self.symbol = config.data.yfinance_symbol
+        self.symbols = [
+            "SLV",      # Primary: iShares Silver Trust
+            "PSLV",     # Backup 1: Sprott Physical Silver
+            "SI=F",     # Backup 2: Silver Futures
+            "XAGUSD=X"  # Backup 3: Spot Price
+        ]
+        self.last_known_price = None
+    
     
     async def fetch_price_history(
         self,
         period: str = "1mo",
-        interval: str = "1h"
+        interval: str = "1d"
     ) -> List[Dict[str, Any]]:
         """
-        Fetch historical price data
-        
-        Args:
-            period: Time period (1d, 5d, 1mo, 3mo, 1y)
-            interval: Data interval (1m, 5m, 15m, 1h, 1d)
+        Fetch price history with multiple fallbacks
         """
-        try:
-            ticker = yf.Ticker(self.symbol)
-            data = ticker.history(period=period, interval=interval)
-            
-            prices = []
-            for index, row in data.iterrows():
-                prices.append({
-                    "timestamp": index.to_pydatetime(),
-                    "open_price": float(row['Open']),
-                    "high_price": float(row['High']),
-                    "low_price": float(row['Low']),
-                    "close_price": float(row['Close']),
-                    "volume": float(row['Volume']),
-                    "price": float(row['Close']),  # Use close as main price
-                    "source": "yfinance"
-                })
-            
-            return prices
+        # Try to get current price data
+        current_data = await self.fetch_price_data()
+        if current_data:
+            return [{
+                "price": current_data['current_price'],
+                "timestamp": current_data['timestamp'],
+                "volume": current_data['volume'],
+                "source": current_data['source']
+            }]
+        return []
+    
+    async def fetch_price_data(self) -> Optional[Dict[str, Any]]:
+        """Fetch current silver price data with multiple fallbacks"""
+        # Try yfinance with multiple symbols
+        for symbol in self.symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                
+                if info and 'regularMarketPrice' in info:
+                    current_price = info.get('regularMarketPrice', 0)
+                    prev_close = info.get('previousClose', current_price)
+                    
+                    print(f"✅ Price data from yfinance ({symbol}): ${current_price:.2f}")
+                    data = {
+                        "symbol": symbol,
+                        "current_price": current_price,
+                        "previous_close": prev_close,
+                        "price_change": current_price - prev_close,
+                        "price_change_pct": ((current_price - prev_close) / prev_close * 100) if prev_close else 0,
+                        "volume": info.get('volume', 0),
+                        "timestamp": datetime.now(),
+                        "source": f"yfinance:{symbol}"
+                    }
+                    self.last_known_price = data
+                    return data
+            except Exception:
+                continue
         
-        except Exception as e:
-            print(f"❌ YFinance error: {e}")
-            return []
+        # Fallback: Use mock data
+        print(f"⚠️ All yfinance symbols failed, using mock price data")
+        return self._mock_price_data()
+    
+    def _mock_price_data(self) -> Dict[str, Any]:
+        """Generate realistic mock price data"""
+        import random
+        base_price = 30.50
+        variation = random.uniform(-0.50, 0.50)
+        current_price = base_price + variation
+        prev_close = base_price
+        
+        return {
+            "symbol": "SLV_MOCK",
+            "current_price": current_price,
+            "previous_close": prev_close,
+            "price_change": current_price - prev_close,
+            "price_change_pct": ((current_price - prev_close) / prev_close * 100),
+            "volume": random.randint(10000000, 50000000),
+            "timestamp": datetime.now(),
+            "source": "mock_data",
+            "is_mock": True
+        }
     
     async def get_current_price(self) -> Optional[float]:
         """Get current silver price"""
-        try:
-            ticker = yf.Ticker(self.symbol)
-            data = ticker.history(period="1d", interval="1m")
-            if not data.empty:
-                return float(data['Close'].iloc[-1])
-            return None
-        except Exception as e:
-            print(f"❌ Current price error: {e}")
-            return None
+        data = await self.fetch_price_data()
+        return data['current_price'] if data else None
 
 
 class DataCollectionOrchestrator:
@@ -230,20 +188,17 @@ class DataCollectionOrchestrator:
     
     def __init__(self):
         self.news_collector = NewsCollector()
-        self.reddit_collector = RedditCollector()
         self.price_collector = PriceCollector()
         
         # New collectors
         try:
-            from collectors import TwitterCollector, StockTwitsCollector, TelegramCollector
+            from collectors import TwitterCollector, TelegramCollector
             self.twitter_collector = TwitterCollector()
-            self.stocktwits_collector = StockTwitsCollector()
             self.telegram_collector = TelegramCollector()
             self._has_new_collectors = True
         except Exception as e:
             print(f"⚠️ New collectors not available: {e}")
             self.twitter_collector = None
-            self.stocktwits_collector = None
             self.telegram_collector = None
             self._has_new_collectors = False
     
@@ -263,7 +218,6 @@ class DataCollectionOrchestrator:
         # Build collection tasks
         tasks = [
             self.news_collector.fetch_articles(days_back=news_days_back),
-            self.reddit_collector.fetch_posts(),
             self.price_collector.fetch_price_history(period=price_period),
         ]
         
@@ -271,8 +225,6 @@ class DataCollectionOrchestrator:
         if self._has_new_collectors:
             if self.twitter_collector:
                 tasks.append(self.twitter_collector.fetch_tweets(max_tweets=100, days_back=news_days_back))
-            if self.stocktwits_collector:
-                tasks.append(self.stocktwits_collector.fetch_messages())
             if self.telegram_collector:
                 tasks.append(self.telegram_collector.fetch_messages(days_back=news_days_back))
         
@@ -281,29 +233,24 @@ class DataCollectionOrchestrator:
         
         # Extract results (handle variable number of collectors)
         articles = results[0] if not isinstance(results[0], Exception) else []
-        posts = results[1] if not isinstance(results[1], Exception) else []
-        prices = results[2] if not isinstance(results[2], Exception) else []
+        prices = results[1] if not isinstance(results[1], Exception) else []
         
         # Add new source results
         tweets = []
-        stocktwits_msgs = []
         telegram_msgs = []
         
-        if self._has_new_collectors and len(results) > 3:
-            idx = 3
+        if self._has_new_collectors and len(results) > 2:
+            idx = 2
             if self.twitter_collector:
                 tweets = results[idx] if not isinstance(results[idx], Exception) else []
-                idx += 1
-            if self.stocktwits_collector:
-                stocktwits_msgs = results[idx] if not isinstance(results[idx], Exception) else []
                 idx += 1
             if self.telegram_collector:
                 telegram_msgs = results[idx] if not isinstance(results[idx], Exception) else []
         
         # Combine all articles/posts
-        all_content = articles + posts + tweets + stocktwits_msgs + telegram_msgs
+        all_content = articles + tweets + telegram_msgs
         
-        print(f"✅ Collected: {len(articles)} articles, {len(posts)} posts, {len(tweets)} tweets, {len(stocktwits_msgs)} StockTwits, {len(telegram_msgs)} Telegram, {len(prices)} price points")
+        print(f"✅ Collected: {len(articles)} articles, {len(tweets)} tweets, {len(telegram_msgs)} Telegram, {len(prices)} price points")
         
         return {
             "articles": all_content,  # Combined all text sources
@@ -312,9 +259,7 @@ class DataCollectionOrchestrator:
             "collected_at": datetime.now(),
             "source_breakdown": {
                 "news": len(articles),
-                "reddit": len(posts),
                 "twitter": len(tweets),
-                "stocktwits": len(stocktwits_msgs),
                 "telegram": len(telegram_msgs)
             }
         }
@@ -363,6 +308,30 @@ class DataCollectionOrchestrator:
 
 # Global collector instance
 collector = DataCollectionOrchestrator()
+
+
+def format_for_narrative_discovery(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Convert collected data to narrative discovery format
+    
+    Args:
+        data: Data dict from DataCollectionOrchestrator.collect_all()
+        
+    Returns:
+        List of formatted article dicts
+    """
+    formatted = []
+    for article in data['articles']:
+        formatted.append({
+            'title': article.get('title', ''),
+            'content': article.get('content', ''),
+            'url': article.get('url', ''),
+            'source': article.get('source', 'unknown'),
+            'published_at': article.get('published_at', datetime.now()),
+            'author': article.get('author', 'unknown'),
+            'metadata': article.get('metadata', {})
+        })
+    return formatted
 
 
 if __name__ == "__main__":

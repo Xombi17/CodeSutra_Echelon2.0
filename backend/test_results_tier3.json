@@ -1,0 +1,54 @@
+{
+  "tests_run": 20,
+  "tests_passed": 20,
+  "tests_failed": 0,
+  "component_status": {
+    "velocity": {
+      "status": "success",
+      "current_velocity": 0.0,
+      "velocity_increase": 0.0,
+      "duration_ms": 8.769989013671875
+    },
+    "strength": {
+      "status": "success",
+      "strength": 10,
+      "duration_ms": 2.5222301483154297
+    },
+    "forecaster": {
+      "status": "success",
+      "prediction": "growth",
+      "probability": 0.9,
+      "duration_ms": 0.0
+    },
+    "hybrid": {
+      "status": "success",
+      "phase": "growth",
+      "strength": 34,
+      "confidence": 0.65,
+      "method": "metrics-fallback",
+      "duration_ms": 15.081405639648438
+    },
+    "trading_signal": {
+      "status": "success",
+      "signal": "HOLD",
+      "confidence": 50.0,
+      "duration_ms": 23.26226234436035
+    }
+  },
+  "performance_metrics": {
+    "batch_tracking": {
+      "narratives_tracked": 16,
+      "duration_seconds": 0.1007695198059082,
+      "narratives_per_second": 158.77817053031055
+    },
+    "tracking": {
+      "narratives": 16,
+      "duration_seconds": 0.08756899833679199,
+      "narratives_per_second": 182.71306402825007
+    }
+  },
+  "quality_scores": {
+    "forecast_reasoning": 1.0
+  },
+  "errors": []
+}

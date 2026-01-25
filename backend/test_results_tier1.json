@@ -1,0 +1,57 @@
+{
+  "tests_run": 20,
+  "tests_passed": 17,
+  "tests_failed": 3,
+  "tests_skipped": 0,
+  "collectors_tested": {
+    "newsapi": {
+      "status": "success",
+      "count": 10,
+      "duration_ms": 423.262357711792,
+      "is_mock": false
+    },
+    "price": {
+      "status": "success",
+      "price": 30.294917487846664,
+      "symbol": "SLV_MOCK",
+      "duration_ms": 7998.613595962524,
+      "is_mock": true
+    },
+    "twitter": {
+      "status": "mock",
+      "count": 3,
+      "duration_ms": 0.5099773406982422,
+      "is_mock": true
+    },
+    "telegram": {
+      "status": "mock",
+      "count": 2,
+      "duration_ms": 0.9632110595703125,
+      "is_mock": true
+    }
+  },
+  "performance_metrics": {
+    "orchestrator": {
+      "total_items": 103,
+      "duration_seconds": 7.2471535205841064,
+      "items_per_second": 14.212476623745982
+    }
+  },
+  "data_quality_scores": {
+    "completeness": 1.0
+  },
+  "errors": [
+    {
+      "test": "NewsAPI Multiple Queries",
+      "details": "(Total: 0 across 4 queries)"
+    },
+    {
+      "test": "Data Freshness",
+      "details": "can't subtract offset-naive and offset-aware datetimes"
+    },
+    {
+      "test": "Sentiment Analysis",
+      "details": "'SentimentAnalyzer' object has no attribute 'analyze_text'"
+    }
+  ]
+}

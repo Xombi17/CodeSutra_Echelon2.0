@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, JSON, ForeignKey, CheckConstraint
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, scoped_session
 from config import config
 
 Base = declarative_base()
@@ -306,18 +306,55 @@ class NarrativeSnapshot(Base):
 
 
 # Database initialization
+_engine = None
+_session_factory = None
+
 def init_database():
     """Initialize database and create tables"""
-    engine = create_engine(f"sqlite:///{config.database.sqlite_path}")
-    Base.metadata.create_all(engine)
-    return engine
+    global _engine, _session_factory
+    
+    _engine = create_engine(
+        f"sqlite:///{config.database.sqlite_path}",
+        # CRITICAL: Enable session expiry to prevent cross-session conflicts
+        pool_pre_ping=True,
+        pool_recycle=3600
+    )
+    Base.metadata.create_all(_engine)
+    
+    # Use scoped_session for thread-safe session management
+    _session_factory = scoped_session(sessionmaker(
+        bind=_engine,
+        expire_on_commit=False  # Prevent objects from expiring after commit
+    ))
+    
+    return _engine
 
 
 def get_session():
-    """Get database session"""
-    engine = create_engine(f"sqlite:///{config.database.sqlite_path}")
-    Session = sessionmaker(bind=engine)
-    return Session()
+    """
+    Get database session with proper isolation
+    
+    IMPORTANT: Always use this in a try/finally block:
+        session = get_session()
+        try:
+            # your code
+        finally:
+            session.close()
+    """
+    global _session_factory
+    
+    if _session_factory is None:
+        init_database()
+    
+    # Return a new session instance
+    return _session_factory()
+
+
+def close_all_sessions():
+    """Close all sessions (useful for cleanup in tests)"""
+    global _session_factory
+    if _session_factory:
+        _session_factory.remove()
 
 
 if __name__ == "__main__":

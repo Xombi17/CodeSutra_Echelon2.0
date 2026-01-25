@@ -40,23 +40,24 @@ class DataConfig:
     news_api_key: str = os.getenv("NEWS_API_KEY", "")
     news_base_url: str = "https://newsapi.org/v2"
     
-    # Reddit
-    reddit_client_id: str = os.getenv("REDDIT_CLIENT_ID", "")
-    reddit_client_secret: str = os.getenv("REDDIT_CLIENT_SECRET", "")
-    reddit_user_agent: str = "SilverSentinel/1.0"
+    # Twitter/X API v2 (Bearer Token - RECOMMENDED)
+    twitter_bearer_token: str = os.getenv("TWITTER_BEARER_TOKEN", "")
     
-    # Twitter/X API
+    # Twitter/X API (OAuth 1.0a - Fallback)
     twitter_api_key: str = os.getenv("TWITTER_API_KEY", "")
     twitter_api_secret: str = os.getenv("TWITTER_API_SECRET", "")
     twitter_access_token: str = os.getenv("TWITTER_ACCESS_TOKEN", "")
     twitter_access_secret: str = os.getenv("TWITTER_ACCESS_SECRET", "")
     
+    
+    
     # Telegram API
     telegram_api_id: str = os.getenv("TELEGRAM_API_ID", "")
     telegram_api_hash: str = os.getenv("TELEGRAM_API_HASH", "")
+    telegram_phone: str = os.getenv("TELEGRAM_PHONE", "")
     
     # Yahoo Finance (no key needed)
-    yfinance_symbol: str = "SI=F"  # Silver futures
+    yfinance_symbol: str = "SLV"  # Silver futures
     
     # Data refresh intervals (minutes)
     high_volatility_interval: int = 10
@@ -70,10 +71,10 @@ class DataConfig:
         if self.source_weights is None:
             self.source_weights = {
                 "twitter": 1.5,      # High influence
-                "stocktwits": 1.3,   # Finance-focused with sentiment
                 "news": 1.2,         # Professional journalism
                 "reddit": 1.0,       # Baseline community sentiment
                 "telegram": 0.8,     # Early signals but noisy
+                   # Trading community sentiment
             }
 
 
@@ -98,6 +99,25 @@ class NarrativeConfig:
     
     # Conflict detection
     min_strength_for_conflict: int = 40
+    
+    # Discovery Engine Settings
+    embedding_model: str = "all-MiniLM-L6-v2"
+    theme_extraction_model: str = "llama-3.3-70b-versatile"  # Uses Groq
+    
+    # Discovery clustering parameters
+    discovery_min_cluster_size: int = 3
+    discovery_min_samples: int = 2
+    
+    # Relevance thresholds
+    relevance_percentile_threshold: int = 20  # Keep top 80%
+    min_articles_for_discovery: int = 3
+    
+    # Theme extraction
+    max_sample_articles_for_themes: int = 20
+    target_theme_count: int = 6
+    
+    # Ranking
+    default_top_n: int = 5
 
 
 @dataclass

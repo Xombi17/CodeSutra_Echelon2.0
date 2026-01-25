@@ -3,10 +3,15 @@ Telegram Data Collector
 Fetches messages from public Telegram channels
 """
 import asyncio
+import sys
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from telethon import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import config
 
 

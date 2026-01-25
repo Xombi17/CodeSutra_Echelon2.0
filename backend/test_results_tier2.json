@@ -1,0 +1,46 @@
+{
+  "tests_run": 18,
+  "tests_passed": 18,
+  "tests_failed": 0,
+  "component_status": {
+    "tfidf": {
+      "status": "success",
+      "feature_count": 2,
+      "sparsity": 0.375,
+      "duration_ms": 2.5310516357421875
+    },
+    "hdbscan": {
+      "status": "success",
+      "clusters_found": 4,
+      "noise_points": 0,
+      "duration_ms": 1.0008811950683594
+    },
+    "narrative_naming": {
+      "status": "success",
+      "name_generated": "Silver Industrial Boom",
+      "duration_ms": 157.96494483947754
+    },
+    "volatility": {
+      "status": "success",
+      "current_volatility": 1.0,
+      "duration_ms": 5.4378509521484375
+    }
+  },
+  "performance_metrics": {
+    "discovery": {
+      "narratives_discovered": 13,
+      "duration_seconds": 1.4837849140167236,
+      "narratives_per_second": 8.76137766140779
+    },
+    "clustering": {
+      "documents": 100,
+      "vectorization_seconds": 0.0020079612731933594,
+      "clustering_seconds": 0.002516031265258789,
+      "total_seconds": 0.0045239925384521484
+    }
+  },
+  "quality_scores": {
+    "narrative_quality": 1.0
+  },
+  "errors": []
+}

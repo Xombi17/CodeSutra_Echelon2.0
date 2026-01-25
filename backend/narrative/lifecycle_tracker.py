@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Literal
 from enum import Enum
 import numpy as np
+from sqlalchemy.orm import Session
 from database import get_session, Narrative, Article, PriceData
 from narrative.sentiment_analyzer import sentiment_analyzer
 from config import config
@@ -40,28 +41,33 @@ class LifecycleTracker:
         Returns:
             Dict with velocity, correlation, sentiment metrics
         """
+        # Create a new session for this operation
         session = get_session()
         
         try:
+            # CRITICAL FIX: Use narrative.id instead of the object itself
+            # This prevents session conflicts
+            narrative_id = narrative.id
+            
             # Calculate mention velocity (mentions per hour)
-            velocity = self._calculate_velocity(narrative, session)
+            velocity = self._calculate_velocity(narrative_id, session)
             
             # Calculate price correlation
-            correlation = self._calculate_price_correlation(narrative, session)
+            correlation = self._calculate_price_correlation(narrative_id, session)
             
             # Get sentiment metrics
             sentiment_data = sentiment_analyzer.analyze_narrative_sentiment(
-                narrative.id,
+                narrative_id,
                 hours_back=24
             )
             
             # Check for conflicting narratives
-            conflicts = self._detect_conflicts_for_narrative(narrative, session)
+            conflicts = self._detect_conflicts_for_narrative(narrative_id, session)
             
             # Calculate mentions in last 48h
             cutoff = datetime.utcnow() - timedelta(hours=48)
             mentions_48h = session.query(Article).filter(
-                Article.narrative_id == narrative.id,
+                Article.narrative_id == narrative_id,
                 Article.published_at >= cutoff
             ).count()
             
@@ -81,8 +87,8 @@ class LifecycleTracker:
     
     def _calculate_velocity(
         self,
-        narrative: Narrative,
-        session
+        narrative_id: int,
+        session: Session
     ) -> Dict[str, float]:
         """Calculate mention velocity and increase ratio"""
         
@@ -92,12 +98,12 @@ class LifecycleTracker:
         cutoff_48h = now - timedelta(hours=48)
         
         recent_mentions = session.query(Article).filter(
-            Article.narrative_id == narrative.id,
+            Article.narrative_id == narrative_id,
             Article.published_at >= cutoff_24h
         ).count()
         
         previous_mentions = session.query(Article).filter(
-            Article.narrative_id == narrative.id,
+            Article.narrative_id == narrative_id,
             Article.published_at >= cutoff_48h,
             Article.published_at < cutoff_24h
         ).count()
@@ -118,15 +124,15 @@ class LifecycleTracker:
     
     def _calculate_price_correlation(
         self,
-        narrative: Narrative,
-        session
+        narrative_id: int,
+        session: Session
     ) -> float:
         """Calculate correlation between narrative mentions and price"""
         
         # Get articles with timestamps
         cutoff = datetime.utcnow() - timedelta(days=7)
         articles = session.query(Article).filter(
-            Article.narrative_id == narrative.id,
+            Article.narrative_id == narrative_id,
             Article.published_at >= cutoff
         ).order_by(Article.published_at).all()
         
@@ -175,14 +181,19 @@ class LifecycleTracker:
     
     def _detect_conflicts_for_narrative(
         self,
-        narrative: Narrative,
-        session
+        narrative_id: int,
+        session: Session
     ) -> List[Dict[str, Any]]:
         """Detect narratives conflicting with this one"""
         
+        # Get the narrative first
+        narrative = session.query(Narrative).get(narrative_id)
+        if not narrative:
+            return []
+        
         # Get other active narratives
         other_narratives = session.query(Narrative).filter(
-            Narrative.id != narrative.id,
+            Narrative.id != narrative_id,
             Narrative.phase.in_(['growth', 'peak']),
             Narrative.strength >= config.narrative.min_strength_for_conflict
         ).all()
@@ -212,33 +223,6 @@ class LifecycleTracker:
         
         return (n1.sentiment > 0.1 and n2.sentiment < -0.1) or \
                (n1.sentiment < -0.1 and n2.sentiment > 0.1)
-    
-    def _are_opposing_refined(self, n1: Narrative, n2: Narrative) -> bool:
-        """
-        Refined conflict detection (inspired by nevan branch)
-        Avoids false positives from volume mismatches
-        """
-        # Basic sentiment opposition check
-        if not ((n1.sentiment > 0.1 and n2.sentiment < -0.1) or
-                (n1.sentiment < -0.1 and n2.sentiment > 0.1)):
-            return False
-        
-        # NEW: Volume ratio check
-        if n1.article_count > 0 and n2.article_count > 0:
-            volume_ratio = min(n1.article_count, n2.article_count) / max(n1.article_count, n2.article_count)
-            if volume_ratio < 0.5:  # Volumes differ by more than 50%
-                return False  # Avoid "10 tweets vs 1000 articles" false conflicts
-        
-        # NEW: Both must be reasonably strong
-        if n1.strength < 60 or n2.strength < 60:
-            return False
-        
-        # NEW: Both must be active recently
-        cutoff = datetime.utcnow() - timedelta(days=3)
-        if n1.last_updated < cutoff or n2.last_updated < cutoff:
-            return False
-        
-        return True
     
     def detect_phase_transition(
         self,
@@ -281,31 +265,43 @@ class LifecycleTracker:
     
     def update_narrative_phase(self, narrative: Narrative, new_phase: NarrativePhase):
         """Update narrative to new phase"""
+        # Create a new session for this update
         session = get_session()
         
         try:
-            old_phase = narrative.phase
-            narrative.phase = new_phase.value
-            narrative.last_updated = datetime.utcnow()
+            # CRITICAL FIX: Re-fetch the narrative in this session
+            # This prevents "already attached to session" errors
+            narrative_id = narrative.id
+            fresh_narrative = session.query(Narrative).get(narrative_id)
+            
+            if not fresh_narrative:
+                print(f"⚠️ Narrative {narrative_id} not found")
+                return
+            
+            old_phase = fresh_narrative.phase
+            fresh_narrative.phase = new_phase.value
+            fresh_narrative.last_updated = datetime.utcnow()
             
             if new_phase == NarrativePhase.DEATH:
-                narrative.death_date = datetime.utcnow()
+                fresh_narrative.death_date = datetime.utcnow()
             
             # Track history
-            if narrative.id not in self.phase_history:
-                self.phase_history[narrative.id] = []
+            if narrative_id not in self.phase_history:
+                self.phase_history[narrative_id] = []
             
-            self.phase_history[narrative.id].append({
+            self.phase_history[narrative_id].append({
                 "from_phase": old_phase,
                 "to_phase": new_phase.value,
                 "timestamp": datetime.utcnow()
             })
             
-            session.add(narrative)
             session.commit()
             
-            print(f"✨ Narrative '{narrative.name}' transitioned: {old_phase} → {new_phase.value}")
+            print(f"✨ Narrative '{fresh_narrative.name}' transitioned: {old_phase} → {new_phase.value}")
         
+        except Exception as e:
+            session.rollback()
+            print(f"❌ Error updating narrative phase: {e}")
         finally:
             session.close()
     
@@ -322,6 +318,7 @@ class LifecycleTracker:
         session = get_session()
         
         try:
+            narrative_id = narrative.id
             metrics = self.calculate_metrics(narrative)
             
             # Social velocity score (0-100)
@@ -330,7 +327,7 @@ class LifecycleTracker:
             # News intensity (article count)
             cutoff = datetime.utcnow() - timedelta(days=1)
             article_count = session.query(Article).filter(
-                Article.narrative_id == narrative.id,
+                Article.narrative_id == narrative_id,
                 Article.published_at >= cutoff
             ).count()
             news_score = min(article_count * 5, 100)
@@ -365,29 +362,53 @@ class LifecycleTracker:
             
             print(f"🔄 Tracking {len(active_narratives)} active narratives...")
             
-            for narrative in active_narratives:
-                # Update strength
-                new_strength = self.calculate_narrative_strength(narrative)
-                narrative.strength = new_strength
-                
-                # Update sentiment
-                sentiment_data = sentiment_analyzer.analyze_narrative_sentiment(narrative.id)
-                narrative.sentiment = sentiment_data["current_sentiment"]
-                
-                # Check for phase transition
-                new_phase = self.detect_phase_transition(narrative)
-                
-                if new_phase:
-                    self.update_narrative_phase(narrative, new_phase)
-                else:
-                    narrative.last_updated = datetime.utcnow()
-                    session.add(narrative)
+            # Store IDs instead of objects to avoid session conflicts
+            narrative_ids = [n.id for n in active_narratives]
             
-            session.commit()
+            # Close the session before processing
+            session.close()
+            
+            # Process each narrative in a fresh session
+            for narrative_id in narrative_ids:
+                # Create a new session for each narrative
+                narrative_session = get_session()
+                try:
+                    narrative = narrative_session.query(Narrative).get(narrative_id)
+                    if not narrative:
+                        continue
+                    
+                    # Update strength
+                    new_strength = self.calculate_narrative_strength(narrative)
+                    narrative.strength = new_strength
+                    
+                    # Update sentiment
+                    sentiment_data = sentiment_analyzer.analyze_narrative_sentiment(narrative_id)
+                    narrative.sentiment = sentiment_data["current_sentiment"]
+                    
+                    # Check for phase transition
+                    new_phase = self.detect_phase_transition(narrative)
+                    
+                    if new_phase:
+                        # Update in separate session to avoid conflicts
+                        narrative_session.close()
+                        self.update_narrative_phase(narrative, new_phase)
+                    else:
+                        narrative.last_updated = datetime.utcnow()
+                        narrative_session.commit()
+                
+                finally:
+                    if narrative_session.is_active:
+                        narrative_session.close()
+            
             print("✅ Narrative tracking complete")
         
+        except Exception as e:
+            print(f"❌ Error in track_all_narratives: {e}")
+            if session.is_active:
+                session.rollback()
         finally:
-            session.close()
+            if session.is_active:
+                session.close()
     
     def get_narrative_status(self, narrative_id: int) -> Dict[str, Any]:
         """Get comprehensive status of a narrative"""
@@ -435,13 +456,16 @@ if __name__ == "__main__":
         narrative = session.query(Narrative).first()
         
         if narrative:
-            status = lifecycle_tracker.get_narrative_status(narrative.id)
+            narrative_id = narrative.id
+            session.close()
+            
+            status = lifecycle_tracker.get_narrative_status(narrative_id)
             print(f"\n📊 Narrative Status: {status['name']}")
             print(f"Phase: {status['phase']}")
             print(f"Strength: {status['strength']}/100")
             print(f"Age: {status['age_days']} days")
             print(f"Metrics: {status['metrics']}")
-        
-        session.close()
+        else:
+            session.close()
     
     asyncio.run(test())
