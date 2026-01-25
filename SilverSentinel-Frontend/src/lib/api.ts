@@ -7,7 +7,12 @@ if (typeof window !== 'undefined') {
 // Base URL for API requests
 // Fallback to '/api' (proxied via next.config.mjs) for local development
 const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-const API_BASE_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
+let API_BASE_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
+
+// Ensure remote URLs include the /api prefix
+if (API_BASE_URL.startsWith('http') && !API_BASE_URL.endsWith('/api')) {
+    API_BASE_URL = `${API_BASE_URL}/api`;
+}
 
 if (typeof window !== 'undefined') {
     console.log('🔗 Effective API_BASE_URL:', API_BASE_URL);
