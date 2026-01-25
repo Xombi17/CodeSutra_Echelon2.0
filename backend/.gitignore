@@ -1,0 +1,18 @@
+
+# Data & Uploads
+data/uploads/
+data/*.jpeg
+data/*.jpg
+data/*.png
+data/*.db
+data/*.session
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Logs
+*.log
