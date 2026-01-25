@@ -1227,4 +1227,4 @@ if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting SilverSentinel via uvicorn.run on port 7860..."); sys.stdout.flush()
     # Host 0.0.0.0 is crucial for Hugging Face Spaces
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=False)
