@@ -98,6 +98,23 @@ async def lifespan(app: FastAPI):
         from database import init_database
         init_database()
         
+        # Step 1.5: Seed demo data if database is empty
+        session = get_session()
+        narrative_count = session.query(Narrative).count()
+        session.close()
+        
+        if narrative_count == 0:
+            print("🌱 [STARTUP] Database is empty, seeding demo data..."); sys.stdout.flush()
+            try:
+                from seed_demo_data import DemoDataSeeder
+                seeder = DemoDataSeeder()
+                await seeder.seed_all()
+                print("✅ [STARTUP] Demo data seeded successfully!"); sys.stdout.flush()
+            except Exception as e:
+                print(f"⚠️ [STARTUP] Failed to seed demo data: {e}"); sys.stdout.flush()
+        else:
+            print(f"📊 [STARTUP] Database has {narrative_count} narratives, skipping seed"); sys.stdout.flush()
+        
         # Step 2: Lazy load heavy modules
         print("📥 [STARTUP] Loading core modules..."); sys.stdout.flush()
         

@@ -2,6 +2,7 @@
 Data Collection Module
 Fetches news, social media, and price data for narrative analysis
 """
+import sys
 import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
