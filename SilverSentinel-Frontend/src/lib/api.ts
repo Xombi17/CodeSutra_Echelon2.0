@@ -4,8 +4,8 @@
  */
 
 // Base URL for API requests
-// During development, Next.js rewrites will handle the proxy to localhost:8000
-const API_BASE_URL = '/api';
+// Fallback to '/api' (proxied via next.config.mjs) for local development
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export interface TradingSignal {
     signal: {
