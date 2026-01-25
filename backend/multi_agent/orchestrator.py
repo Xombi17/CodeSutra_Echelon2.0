@@ -251,5 +251,81 @@ You may change your vote if you find their arguments compelling, or defend your 
             return "ERROR: Unable to get LLM response"
 
 
+    async def simulate_scenario(
+        self,
+        narratives: List[Dict[str, Any]],
+        factors: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Simulate a "What-If" market scenario
+        
+        Args:
+            narratives: List of active narratives to include
+            factors: List of hypothetical factors (e.g., "Yields +0.5%")
+            
+        Returns:
+            Dict with consensus prediction and reasoning
+        """
+        print("🔮 Running What-If Simulation...")
+        
+        # Build synthesis context
+        narrative_text = "\n".join([f"- {n['name']} ({n['phase']}, Strength: {n['strength']})" for n in narratives])
+        factor_text = "\n".join([f"- {f}" for f in factors])
+        
+        scenario_prompt = f"""
+        SCENARIO CONTEXT:
+        
+        Active Narratives:
+        {narrative_text}
+        
+        New Hypothetical Factors:
+        {factor_text}
+        
+        Analyze how these factors interact with existing narratives.
+        Predict the likely impact on Silver Price over the next 1-2 weeks.
+        """
+        
+        # Each agent analyzes the scenario
+        tasks = []
+        for agent_name, agent in self.agents.items():
+            # Agents vote on PRICE DIRECTION for simulation
+            task = agent.analyze({
+                "narrative_id": "simulation",
+                "narrative_title": "Hypothetical Scenario",
+                "evidence": [{"text": scenario_prompt, "source_id": "sim", "timestamp": datetime.utcnow().isoformat()}],
+                "is_simulation": True
+            }, self._call_llm)
+            tasks.append(task)
+            
+        votes = await asyncio.gather(*tasks, return_exceptions=True)
+        valid_votes = [v for v in votes if isinstance(v, AgentVoteResult)]
+        
+        # Calculate simulation consensus
+        bullish_votes = sum(1 for v in valid_votes if v.phase_vote == "growth") # Interpreting growth as bullish
+        bearish_votes = sum(1 for v in valid_votes if v.phase_vote == "decay")  # Interpreting decay as bearish
+        neutral_votes = len(valid_votes) - bullish_votes - bearish_votes
+        
+        # Determine overall outlook
+        if bullish_votes > bearish_votes and bullish_votes >= 2:
+            outlook = "Bullish"
+        elif bearish_votes > bullish_votes and bearish_votes >= 2:
+            outlook = "Bearish"
+        else:
+            outlook = "Neutral / Volatile"
+            
+        # Synthesize reasoning
+        predictions = []
+        for vote in valid_votes:
+            predictions.append(f"**{vote.agent_name.title()}**: {vote.reasoning[:150]}...")
+            
+        return {
+            "consensus": outlook,
+            "confidence": sum(v.confidence for v in valid_votes) / len(valid_votes) if valid_votes else 0,
+            "bullish_count": bullish_votes,
+            "bearish_count": bearish_votes,
+            "predictions": predictions,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
 # Global instance
 multi_agent_orchestrator = MultiAgentOrchestrator()

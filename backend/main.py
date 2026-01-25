@@ -442,6 +442,60 @@ async def analyze_multi_agent(narrative_data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/simulate")
+async def simulate_what_if(
+    request: dict
+):
+    """
+    Run "What-If" market simulation
+    
+    Request Body:
+    {
+        "narrative_ids": [1, 5],
+        "factors": ["Silver Price +5%", "Miners Strike Ends"]
+    }
+    """
+    try:
+        session = get_session()
+        narrative_ids = request.get("narrative_ids", [])
+        factors = request.get("factors", [])
+        
+        # Fetch active narratives
+        narratives = []
+        if narrative_ids:
+            db_narratives = session.query(Narrative).filter(Narrative.id.in_(narrative_ids)).all()
+            narratives = [n.to_dict() for n in db_narratives]
+        else:
+            # Default to top 3 active narratives
+            db_narratives = session.query(Narrative).filter(
+                Narrative.phase.in_(['growth', 'peak'])
+            ).order_by(Narrative.strength.desc()).limit(3).all()
+            narratives = [n.to_dict() for n in db_narratives]
+            
+        session.close()
+        
+        # Run simulation
+        result = await multi_agent_orchestrator.simulate_scenario(narratives, factors)
+        
+        return {
+            "success": True,
+            "simulation": result,
+            "inputs": {
+                "narratives_count": len(narratives),
+                "factors": factors
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/trading-signal-enhanced")
 async def get_enhanced_signal():
     """

@@ -82,11 +82,12 @@ with st.sidebar:
         st.rerun()
 
 # Main tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Dashboard", 
     "📰 Narratives", 
     "📈 Trading Agent",
     "📷 Silver Scanner",
+    "🔮 What-If Simulator",
     "🛠️ API Tester"
 ])
 
@@ -428,8 +429,101 @@ with tab4:
     except:
         st.info("Scan history will appear here after your first scan.")
 
-# ==================== TAB 5: API Tester ====================
+# ==================== TAB 5: What-If Simulator ====================
 with tab5:
+    st.header("🔮 Market Scenario Simulator")
+    st.markdown("Test how hypothetical events would impact the market, analyzed by our multi-agent system.")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("Scenario Configuration")
+        
+        # Factor inputs
+        st.markdown("**Add Hypothetical Factors:**")
+        factors = []
+        
+        f1 = st.text_input("Factor 1", placeholder="e.g., Inflation rises to 4%")
+        if f1: factors.append(f1)
+        
+        f2 = st.text_input("Factor 2", placeholder="e.g., New mining strike in Mexico")
+        if f2: factors.append(f2)
+        
+        f3 = st.text_input("Factor 3", placeholder="e.g., USD Index drops to 100")
+        if f3: factors.append(f3)
+        
+        st.markdown("---")
+        
+        # Narrative selection
+        st.markdown("**Select Active Narratives to Include:**")
+        selected_narratives = []
+        try:
+            narratives_resp = requests.get(f"{API_BASE}/api/narratives").json()
+            narratives = narratives_resp.get("narratives", []) if isinstance(narratives_resp, dict) else narratives_resp
+            
+            if narratives:
+                for n in narratives:
+                    if st.checkbox(f"{n['name']} (Strength: {safe_int(n['strength'])})", value=True, key=f"sim_{n['id']}"):
+                        selected_narratives.append(n['id'])
+            else:
+                st.info("No active narratives found.")
+        except:
+            st.error("Could not fetch narratives.")
+            
+        run_sim = st.button("🚀 Run Simulation", type="primary", disabled=len(factors)==0)
+        
+    with col2:
+        st.subheader("Simulation Results")
+        
+        if run_sim:
+            with st.spinner("🤖 Multi-Agent System analyzing scenario..."):
+                try:
+                    payload = {
+                        "narrative_ids": selected_narratives,
+                        "factors": factors
+                    }
+                    
+                    response = requests.post(f"{API_BASE}/api/simulate", json=payload, timeout=60)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        result = data.get("simulation", {})
+                        
+                        # Consensus
+                        consensus = result.get("consensus", "Neutral")
+                        conf = result.get("confidence", 0)
+                        
+                        if consensus == "Bullish":
+                            st.success(f"📈 Consensus: **BULLISH** (Confidence: {conf*100:.0f}%)")
+                        elif consensus == "Bearish":
+                            st.error(f"📉 Consensus: **BEARISH** (Confidence: {conf*100:.0f}%)")
+                        else:
+                            st.warning(f"⚖️ Consensus: **NEUTRAL** (Confidence: {conf*100:.0f}%)")
+                            
+                        # Vote breakdown
+                        b_col1, b_col2 = st.columns(2)
+                        with b_col1:
+                            st.metric("Bullish Votes", result.get("bullish_count", 0))
+                        with b_col2:
+                            st.metric("Bearish Votes", result.get("bearish_count", 0))
+                            
+                        st.markdown("---")
+                        st.markdown("### 🧠 Agent Predictions")
+                        
+                        predictions = result.get("predictions", [])
+                        for pred in predictions:
+                            st.info(pred)
+                            
+                    else:
+                        st.error(f"Simulation failed: {response.text}")
+                        
+                except Exception as e:
+                    st.error(f"Error running simulation: {e}")
+        else:
+            st.info("Configure factors and click 'Run Simulation' to see AI predictions.")
+
+# ==================== TAB 6: API Tester ====================
+with tab6:
     st.header("🛠️ API Endpoint Tester")
     
     endpoints = {
