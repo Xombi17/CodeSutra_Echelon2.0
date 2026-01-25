@@ -49,7 +49,8 @@ pytz==2024.1
 # These are not needed for core trading system (Phases 1-4)
 # SKIPPED: Python 3.14 has build issues with Pillow 10.2.0
 # If needed, install manually: pip install pillow opencv-python aiofiles
-opencv-python==4.8.1.78
+# Improved for server environments (no GUI dependencies)
+opencv-python-headless==4.8.1.78
 pillow==10.2.0
 aiofiles==23.2.1
 
