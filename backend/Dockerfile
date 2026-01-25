@@ -1,5 +1,5 @@
-# Use Python 3.11 slim image for smaller size
-FROM python:3.11-slim
+# Use Python 3.11 slim-bookworm for stability
+FROM python:3.11-slim-bookworm
 
 # Set working directory
 WORKDIR /code
@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Install system dependencies required for OpenCV and other tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -28,6 +28,7 @@ COPY . /code
 # Create a non-root user (Hugging Face security best practice)
 RUN useradd -m -u 1000 user
 USER user
+
 
 # Expose the port
 EXPOSE 7860
