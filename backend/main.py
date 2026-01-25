@@ -18,16 +18,11 @@ print("Importing Pydantic..."); sys.stdout.flush()
 from pydantic import BaseModel, EmailStr, Field
 
 # Import core modules
-print("DEBUG: Importing database..."); sys.stdout.flush()
-from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan, AgentVote
-print("DEBUG: Importing data_collection..."); sys.stdout.flush()
-from data_collection import collector
-print("DEBUG: Importing resource_manager..."); sys.stdout.flush()
-from narrative.resource_manager import resource_manager
-print("DEBUG: Importing pattern_hunter..."); sys.stdout.flush()
-from narrative.pattern_hunter import pattern_hunter
-print("DEBUG: Importing lifecycle_tracker..."); sys.stdout.flush()
-from narrative.lifecycle_tracker import lifecycle_tracker
+# NOTE: Heavy imports are now delayed to lifespan to ensure instant startup
+# from data_collection import collector -> Moved to get_collector() dependency or lifecycle
+# from narrative.resource_manager import resource_manager -> Moved
+# from narrative.pattern_hunter import pattern_hunter -> Moved
+# from narrative.lifecycle_tracker import lifecycle_tracker -> Moved
 print("DEBUG: Importing forecaster..."); sys.stdout.flush()
 from narrative.forecaster import forecaster
 print("DEBUG: Importing trading_agent..."); sys.stdout.flush()
@@ -79,25 +74,53 @@ MAX_BACKGROUND_TASKS = 100
 background_tasks: set = set()
 
 
+# Global placeholders for lazy loading
+collector = None
+resource_manager = None
+pattern_hunter = None
+lifecycle_tracker = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events with enhanced diagnostic logging"""
     print("🚀 [STARTUP] SilverSentinel backend is initializing...")
     
+    # Initialize globals lazily
+    global collector, resource_manager, pattern_hunter, lifecycle_tracker
+    
     try:
         # Step 1: Initialize database
         print("📁 [STARTUP] Initializing database..."); sys.stdout.flush()
+        from database import init_database
         init_database()
         
-        # Step 2: Skip HDBSCAN check (disabled for build speed)
-        print("🧠 [STARTUP] Clustering engine skipped (speed-optimized)"); sys.stdout.flush()
-
-        # Step 3: Start background monitoring with a delay
-        # This prevents blocking the initial server health check
+        # Step 2: Lazy load heavy modules
+        print("📥 [STARTUP] Loading core modules..."); sys.stdout.flush()
+        
+        import data_collection
+        collector = data_collection.collector
+        
+        import narrative.resource_manager
+        resource_manager = narrative.resource_manager.resource_manager
+        
+        import narrative.pattern_hunter
+        pattern_hunter = narrative.pattern_hunter.pattern_hunter
+        
+        import narrative.lifecycle_tracker
+        lifecycle_tracker = narrative.lifecycle_tracker.lifecycle_tracker
+        
+        # Step 3: Start background monitoring
+        print("📡 [STARTUP] Starting background tasks..."); sys.stdout.flush()
+        
         async def delayed_monitoring():
             print("⏳ [STARTUP] Deferring background tasks for 10 seconds to allow health check...")
             await asyncio.sleep(10)
             print("🤖 [STARTUP] Starting continuous monitoring task...")
+            # We must import run_continuous_monitoring here or have it available
+            # Assuming it is defined later in this file, we can call it.
+            # If not, we need to import it. But usually it is defined in main.py.
+            # Checking if run_continuous_monitoring is available in main...
+            # It seems it is defined below. 
             await run_continuous_monitoring()
 
         task = asyncio.create_task(delayed_monitoring())
