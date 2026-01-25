@@ -423,61 +423,61 @@ async def get_price_history(
                 except:
                     usd_inr_rate = 83.5
                     print("⚠️ [PRICE] Using default USD/INR rate: 83.5"); sys.stdout.flush()
-                    
-                    # Convert: Silver is in USD/troy oz, we need INR/gram
-                    INDIA_PREMIUM = 4.15
-                    conversion_factor = (usd_inr_rate / 31.1035) * INDIA_PREMIUM
-                    
-                    prices = []
-                    if not hist.empty:
-                        for timestamp, row in hist.iterrows():
-                            price_inr = row["Close"] * conversion_factor
-                            price_entry = {
-                                "price": round(price_inr, 2),
-                                "timestamp": timestamp.isoformat(),
-                                "open": round(row["Open"] * conversion_factor, 2) if "Open" in row else None,
-                                "high": round(row["High"] * conversion_factor, 2) if "High" in row else None,
-                                "low": round(row["Low"] * conversion_factor, 2) if "Low" in row else None,
-                                "close": round(row["Close"] * conversion_factor, 2) if "Close" in row else None
-                            }
-                            prices.append(price_entry)
-                            
-                            # Cache in database
-                            db_price = PriceData(
-                                timestamp=timestamp.to_pydatetime(),
-                                price=price_inr,
-                                open_price=row["Open"] * conversion_factor if "Open" in row else None,
-                                high_price=row["High"] * conversion_factor if "High" in row else None,
-                                low_price=row["Low"] * conversion_factor if "Low" in row else None,
-                                close_price=row["Close"] * conversion_factor if "Close" in row else None,
-                                volume=row["Volume"] if "Volume" in row else None,
-                                source="yfinance"
-                            )
-                            session.merge(db_price)
-                        
-                        session.commit()
-                        print(f"✅ [PRICE] Cached {len(prices)} price points"); sys.stdout.flush()
-                    else:
-                        print("⚠️ [PRICE] yfinance returned empty history"); sys.stdout.flush()
-                        raise Exception("Empty history")
                 
-                except Exception as e:
-                    print(f"yfinance fetch failed: {e}, using simulated data")
-                    # Fallback to simulated data
-                    import random
-                    current_data = await collector.price_collector.fetch_price_data()
-                    current_price = current_data.get("current_price", 80.0) if current_data else 80.0
+                # Convert: Silver is in USD/troy oz, we need INR/gram
+                INDIA_PREMIUM = 4.15
+                conversion_factor = (usd_inr_rate / 31.1035) * INDIA_PREMIUM
+                
+                prices = []
+                if not hist.empty:
+                    for timestamp, row in hist.iterrows():
+                        price_inr = row["Close"] * conversion_factor
+                        price_entry = {
+                            "price": round(price_inr, 2),
+                            "timestamp": timestamp.isoformat(),
+                            "open": round(row["Open"] * conversion_factor, 2) if "Open" in row else None,
+                            "high": round(row["High"] * conversion_factor, 2) if "High" in row else None,
+                            "low": round(row["Low"] * conversion_factor, 2) if "Low" in row else None,
+                            "close": round(row["Close"] * conversion_factor, 2) if "Close" in row else None
+                        }
+                        prices.append(price_entry)
+                        
+                        # Cache in database
+                        db_price = PriceData(
+                            timestamp=timestamp.to_pydatetime(),
+                            price=price_inr,
+                            open_price=row["Open"] * conversion_factor if "Open" in row else None,
+                            high_price=row["High"] * conversion_factor if "High" in row else None,
+                            low_price=row["Low"] * conversion_factor if "Low" in row else None,
+                            close_price=row["Close"] * conversion_factor if "Close" in row else None,
+                            volume=row["Volume"] if "Volume" in row else None,
+                            source="yfinance"
+                        )
+                        session.merge(db_price)
                     
-                    prices = []
-                    points = min(hours * 4, 96)
-                    
-                    for i in range(points):
-                        hours_ago = hours * (1 - i / points)
-                        timestamp = datetime.utcnow() - timedelta(hours=hours_ago)
-                        variation = random.uniform(-0.02, 0.02) * current_price
-                        trend = (i / points - 0.5) * current_price * 0.01
-                        price = current_price + variation + trend
-                    
+                    session.commit()
+                    print(f"✅ [PRICE] Cached {len(prices)} price points"); sys.stdout.flush()
+                else:
+                    print("⚠️ [PRICE] yfinance returned empty history"); sys.stdout.flush()
+                    raise Exception("Empty history")
+            
+            except Exception as e:
+                print(f"yfinance fetch failed: {e}, using simulated data")
+                # Fallback to simulated data
+                import random
+                current_data = await collector.price_collector.fetch_price_data()
+                current_price = current_data.get("current_price", 80.0) if current_data else 80.0
+                
+                prices = []
+                points = min(hours * 4, 96)
+                
+                for i in range(points):
+                    hours_ago = hours * (1 - i / points)
+                    timestamp = datetime.utcnow() - timedelta(hours=hours_ago)
+                    variation = random.uniform(-0.02, 0.02) * current_price
+                    trend = (i / points - 0.5) * current_price * 0.01
+                    price = current_price + variation + trend
+                
                     prices.append({
                         "price": round(price, 2),
                         "timestamp": timestamp.isoformat(),
