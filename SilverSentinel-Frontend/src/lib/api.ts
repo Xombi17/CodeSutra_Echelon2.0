@@ -1,11 +1,18 @@
-/**
- * SilverSentinel API Client
- * Centralized API handling for the frontend
- */
+// Debugging: Log configuration on initialization (client-side only)
+if (typeof window !== 'undefined') {
+    console.log('🛡️ SilverSentinel API Client Initializing');
+    console.log('📡 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+}
 
 // Base URL for API requests
 // Fallback to '/api' (proxied via next.config.mjs) for local development
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
+
+if (typeof window !== 'undefined') {
+    console.log('🔗 Effective API_BASE_URL:', API_BASE_URL);
+}
+
 
 export interface TradingSignal {
     signal: {

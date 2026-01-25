@@ -9,23 +9,29 @@ import AppNavbar from "@/components/AppNavbar";
 
 // WebSocket URL with dynamic fallback
 const getWsUrl = () => {
+    // If configured explicitly, use it
     if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
     
-    // Check if we have an API URL to derive the WS URL from
+    // Derived from API URL
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (apiUrl) {
-        // "https://user-space.hf.space/api" -> "wss://user-space.hf.space/ws/live"
-        // "http://127.0.0.1:8000/api" -> "ws://127.0.0.1:8000/ws/live"
+    
+    if (apiUrl && apiUrl.startsWith('http')) {
+        // Handle https -> wss transformation for Hugging Face or other SSL environments
         return apiUrl
             .replace('https://', 'wss://')
             .replace('http://', 'ws://')
-            .replace('/api', '/ws/live');
+            .replace(/\/api$/, '') // Remove /api if present for the base WS path
+            .replace(/\/$/, '')    // Remove trailing slash
+            + '/ws/live';
     }
     
+    // Default fallback for local development proxy
     return "ws://127.0.0.1:8000/ws/live";
 };
 
 const WS_URL = getWsUrl();
+console.log('🔌 WebSocket Target:', WS_URL);
+
 
 export default function DashboardPage() {
     const [signal, setSignal] = useState<TradingSignal | null>(null);
