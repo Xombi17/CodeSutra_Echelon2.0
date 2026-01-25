@@ -24,6 +24,9 @@ COPY ./requirements.txt /code/requirements.txt
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+# Set Python to run in unbuffered mode (to see logs on HF immediately)
+ENV PYTHONUNBUFFERED=1
+
 # Create a non-root user (Hugging Face security best practice)
 # Check if user 1000 exists, if not create it
 RUN id -u 1000 &>/dev/null || useradd -m -u 1000 user
