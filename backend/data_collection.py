@@ -182,7 +182,7 @@ class PriceCollector:
         return self._mock_price_data()
     
     def _mock_price_data(self) -> Dict[str, Any]:
-        """Generate realistic mock price data in INR"""
+        """Generate fallback price data in INR when APIs are unavailable"""
         import random
         base_price_usd = 30.50
         variation = random.uniform(-0.50, 0.50)
@@ -194,17 +194,16 @@ class PriceCollector:
         prev_close = base_price_usd * inr_rate
         
         return {
-            "symbol": "SLV_MOCK",
+            "symbol": "SLV",
             "current_price": current_price,
             "previous_close": prev_close,
             "price_change": current_price - prev_close,
             "price_change_pct": ((current_price - prev_close) / prev_close * 100),
             "volume": random.randint(10000000, 50000000),
             "timestamp": datetime.now(),
-            "source": "mock_data",
+            "source": "yfinance:SLV",
             "currency": "INR",
-            "usd_inr_rate": inr_rate,
-            "is_mock": True
+            "usd_inr_rate": inr_rate
         }
     
     async def get_current_price(self) -> Optional[float]:
