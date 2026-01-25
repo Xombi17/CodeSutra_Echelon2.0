@@ -880,4 +880,5 @@ async def run_continuous_monitoring():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    # Use import string "main:app" to enable reload
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

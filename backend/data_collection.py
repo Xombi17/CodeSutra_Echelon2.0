@@ -94,7 +94,7 @@ class NewsCollector:
 
 
 class PriceCollector:
-    """Collect silver price data"""
+    """Collect silver price data in INR"""
     
     def __init__(self):
         self.symbols = [
@@ -104,6 +104,21 @@ class PriceCollector:
             "XAGUSD=X"  # Backup 3: Spot Price
         ]
         self.last_known_price = None
+        self.usd_inr_rate = 83.50  # Default rate, will be updated
+    
+    def _get_usd_inr_rate(self) -> float:
+        """Get current USD/INR exchange rate"""
+        try:
+            ticker = yf.Ticker("USDINR=X")
+            info = ticker.info
+            if info and 'regularMarketPrice' in info:
+                rate = info.get('regularMarketPrice', 83.50)
+                print(f"✅ USD/INR rate: ₹{rate:.2f}")
+                self.usd_inr_rate = rate
+                return rate
+        except Exception as e:
+            print(f"⚠️ Could not fetch USD/INR rate, using default: {e}")
+        return self.usd_inr_rate
     
     
     async def fetch_price_history(
@@ -126,7 +141,10 @@ class PriceCollector:
         return []
     
     async def fetch_price_data(self) -> Optional[Dict[str, Any]]:
-        """Fetch current silver price data with multiple fallbacks"""
+        """Fetch current silver price data in INR with multiple fallbacks"""
+        # Get current USD/INR rate first
+        inr_rate = self._get_usd_inr_rate()
+        
         # Try yfinance with multiple symbols
         for symbol in self.symbols:
             try:
@@ -134,10 +152,14 @@ class PriceCollector:
                 info = ticker.info
                 
                 if info and 'regularMarketPrice' in info:
-                    current_price = info.get('regularMarketPrice', 0)
-                    prev_close = info.get('previousClose', current_price)
+                    usd_price = info.get('regularMarketPrice', 0)
+                    usd_prev_close = info.get('previousClose', usd_price)
                     
-                    print(f"✅ Price data from yfinance ({symbol}): ${current_price:.2f}")
+                    # Convert to INR
+                    current_price = usd_price * inr_rate
+                    prev_close = usd_prev_close * inr_rate
+                    
+                    print(f"✅ Price data from yfinance ({symbol}): ₹{current_price:.2f} (${usd_price:.2f} x {inr_rate:.2f})")
                     data = {
                         "symbol": symbol,
                         "current_price": current_price,
@@ -146,7 +168,9 @@ class PriceCollector:
                         "price_change_pct": ((current_price - prev_close) / prev_close * 100) if prev_close else 0,
                         "volume": info.get('volume', 0),
                         "timestamp": datetime.now(),
-                        "source": f"yfinance:{symbol}"
+                        "source": f"yfinance:{symbol}",
+                        "currency": "INR",
+                        "usd_inr_rate": inr_rate
                     }
                     self.last_known_price = data
                     return data
@@ -158,12 +182,16 @@ class PriceCollector:
         return self._mock_price_data()
     
     def _mock_price_data(self) -> Dict[str, Any]:
-        """Generate realistic mock price data"""
+        """Generate realistic mock price data in INR"""
         import random
-        base_price = 30.50
+        base_price_usd = 30.50
         variation = random.uniform(-0.50, 0.50)
-        current_price = base_price + variation
-        prev_close = base_price
+        usd_price = base_price_usd + variation
+        
+        # Convert to INR
+        inr_rate = self.usd_inr_rate
+        current_price = usd_price * inr_rate
+        prev_close = base_price_usd * inr_rate
         
         return {
             "symbol": "SLV_MOCK",
@@ -174,6 +202,8 @@ class PriceCollector:
             "volume": random.randint(10000000, 50000000),
             "timestamp": datetime.now(),
             "source": "mock_data",
+            "currency": "INR",
+            "usd_inr_rate": inr_rate,
             "is_mock": True
         }
     
@@ -189,18 +219,12 @@ class DataCollectionOrchestrator:
     def __init__(self):
         self.news_collector = NewsCollector()
         self.price_collector = PriceCollector()
+        self.reddit_collector = None # Initialize to avoid AttributeError
         
-        # New collectors
-        try:
-            from collectors import TwitterCollector, TelegramCollector
-            self.twitter_collector = TwitterCollector()
-            self.telegram_collector = TelegramCollector()
-            self._has_new_collectors = True
-        except Exception as e:
-            print(f"⚠️ New collectors not available: {e}")
-            self.twitter_collector = None
-            self.telegram_collector = None
-            self._has_new_collectors = False
+        # Social media collectors removed as requested
+        self.twitter_collector = None
+        self.telegram_collector = None
+        self._has_new_collectors = False
     
     async def collect_all(
         self,
@@ -213,7 +237,7 @@ class DataCollectionOrchestrator:
         Returns:
             Dict with articles, posts, and prices
         """
-        print("🔄 Collecting data from all sources...")
+        print("🔄 Collecting data from all sources (NewsAPI only)...")
         
         # Build collection tasks
         tasks = [
@@ -221,46 +245,24 @@ class DataCollectionOrchestrator:
             self.price_collector.fetch_price_history(period=price_period),
         ]
         
-        # Add new collectors if available
-        if self._has_new_collectors:
-            if self.twitter_collector:
-                tasks.append(self.twitter_collector.fetch_tweets(max_tweets=100, days_back=news_days_back))
-            if self.telegram_collector:
-                tasks.append(self.telegram_collector.fetch_messages(days_back=news_days_back))
-        
         # Run collections in parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Extract results (handle variable number of collectors)
+        # Extract results
         articles = results[0] if not isinstance(results[0], Exception) else []
         prices = results[1] if not isinstance(results[1], Exception) else []
         
-        # Add new source results
-        tweets = []
-        telegram_msgs = []
-        
-        if self._has_new_collectors and len(results) > 2:
-            idx = 2
-            if self.twitter_collector:
-                tweets = results[idx] if not isinstance(results[idx], Exception) else []
-                idx += 1
-            if self.telegram_collector:
-                telegram_msgs = results[idx] if not isinstance(results[idx], Exception) else []
-        
-        # Combine all articles/posts
-        all_content = articles + tweets + telegram_msgs
-        
-        print(f"✅ Collected: {len(articles)} articles, {len(tweets)} tweets, {len(telegram_msgs)} Telegram, {len(prices)} price points")
+        print(f"✅ Collected: {len(articles)} articles, {len(prices)} price points")
         
         return {
-            "articles": all_content,  # Combined all text sources
-            "posts": [],  # Deprecated - all in articles now
+            "articles": articles,
+            "posts": [],
             "prices": prices,
             "collected_at": datetime.now(),
             "source_breakdown": {
                 "news": len(articles),
-                "twitter": len(tweets),
-                "telegram": len(telegram_msgs)
+                "twitter": 0,
+                "telegram": 0
             }
         }
     

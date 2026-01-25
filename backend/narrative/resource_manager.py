@@ -153,10 +153,9 @@ class ResourceManager:
             tasks.append(("news", collector.news_collector.fetch_articles()))
             self.last_refresh["news"] = datetime.now()
         
-        if force or self.is_source_stale("reddit", strategy):
-            print(f"🔄 Refreshing reddit (interval: {strategy['reddit_interval_minutes']}min)")
-            tasks.append(("reddit", collector.reddit_collector.fetch_posts()))
-            self.last_refresh["reddit"] = datetime.now()
+        # Reddit collector removed
+        # if force or self.is_source_stale("reddit", strategy):
+        #     pass
         
         if force or self.is_source_stale("price", strategy):
             print(f"🔄 Refreshing prices (interval: {strategy['price_interval_minutes']}min)")
