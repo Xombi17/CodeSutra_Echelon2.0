@@ -358,8 +358,10 @@ async def get_price_history(
                 usd_inr_rate = usd_inr.info.get("regularMarketPrice", 83.0)
                 
                 # Convert: Silver is in USD/troy oz, we need INR/gram
-                # 1 troy oz = 31.1035 grams
-                conversion_factor = usd_inr_rate / 31.1035
+                # Convert: Silver is in USD/troy oz, we need INR/gram
+                # Added premium (~4.15) to account for duties/GST/MCX premiums (Target ~334 INR/g)
+                INDIA_PREMIUM = 4.15
+                conversion_factor = (usd_inr_rate / 31.1035) * INDIA_PREMIUM
                 
                 prices = []
                 for timestamp, row in hist.iterrows():
@@ -1059,8 +1061,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 Narrative.phase != 'death'
             ).order_by(Narrative.strength.desc()).limit(5).all()
             
-            session.close()
-            
             # Send update
             await websocket.send_json({
                 "type": "update",
@@ -1068,6 +1068,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 "narratives": [n.to_dict() for n in narratives],
                 "timestamp": datetime.utcnow().isoformat()
             })
+            
+            session.close()
     
     except WebSocketDisconnect:
         manager.disconnect(websocket)
