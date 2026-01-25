@@ -16,6 +16,7 @@ huggingface-hub==0.20.3
 
 # Machine Learning & NLP
 scikit-learn==1.4.0
+hdbscan==0.8.33
 
 vaderSentiment==3.3.2
 sentence-transformers==2.3.1

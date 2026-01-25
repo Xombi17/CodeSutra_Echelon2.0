@@ -5,13 +5,10 @@ Unsupervised narrative discovery through clustering
 import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from sklearn.feature_extraction.text import TfidfVectorizer
-from hdbscan import HDBSCAN
 import numpy as np
 from database import get_session, Article, Narrative
 from orchestrator import orchestrator
 from config import config
-
 
 class PatternHunter:
     """
@@ -20,18 +17,28 @@ class PatternHunter:
     """
     
     def __init__(self):
-        self.vectorizer = TfidfVectorizer(
-            max_features=1000,
-            ngram_range=(1, 3),
-            stop_words='english',
-            min_df=2
-        )
-        self.clusterer = HDBSCAN(
-            min_cluster_size=config.narrative.min_cluster_size,
-            min_samples=2,
-            metric='euclidean'
-        )
+        # Heavy imports deferred to method calls
+        self.vectorizer = None
+        self.clusterer = None
     
+    def _ensure_models(self):
+        """Lazy load ML models to speed up startup"""
+        if self.vectorizer is None:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            self.vectorizer = TfidfVectorizer(
+                max_features=1000,
+                ngram_range=(1, 3),
+                stop_words='english',
+                min_df=2
+            )
+        if self.clusterer is None:
+            from hdbscan import HDBSCAN
+            self.clusterer = HDBSCAN(
+                min_cluster_size=config.narrative.min_cluster_size,
+                min_samples=2,
+                metric='euclidean'
+            )
+
     async def discover_narratives(
         self,
         days_back: int = 7,
@@ -39,14 +46,8 @@ class PatternHunter:
     ) -> List[Dict[str, Any]]:
         """
         Discover narratives from recent articles
-        
-        Args:
-            days_back: How many days of articles to analyze
-            min_articles: Minimum articles needed for clustering
-            
-        Returns:
-            List of discovered narratives
         """
+        self._ensure_models()
         if min_articles is None:
             min_articles = config.narrative.min_articles_for_clustering
         
@@ -128,14 +129,8 @@ class PatternHunter:
     ) -> Optional[Dict[str, Any]]:
         """
         Generate human-readable name for a cluster
-        
-        Args:
-            cluster_id: Cluster ID
-            articles: Articles in this cluster
-            
-        Returns:
-            Narrative dict with name and metadata
         """
+        self._ensure_models()
         # Extract top keywords using TF-IDF
         texts = [self._prepare_text(article) for article in articles]
         

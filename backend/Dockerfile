@@ -29,14 +29,15 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 ENV PYTHONUNBUFFERED=1
 
 # Create a non-root user (Hugging Face security best practice)
-# Check if user 1000 exists, if not create it
-RUN id -u 1000 &>/dev/null || useradd -m -u 1000 user
+# Suppress noisy error if user already exists
+RUN id -u 1000 >/dev/null 2>&1 || useradd -m -u 1000 user
+
+# Copy application code with ownership
+# Doing this before USER switch for efficiency
+COPY --chown=user . /code
 
 # Switch to user
 USER user
-
-# Copy application code with ownership (Crucial for SQLite write permissions)
-COPY --chown=user . /code
 
 
 

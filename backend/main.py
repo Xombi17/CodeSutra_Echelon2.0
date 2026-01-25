@@ -13,6 +13,8 @@ print("Importing Path...")
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import time
+print("Importing Pydantic..."); sys.stdout.flush()
 from pydantic import BaseModel, EmailStr, Field
 
 # Import core modules
@@ -84,20 +86,22 @@ async def lifespan(app: FastAPI):
     
     try:
         # Step 1: Initialize database
-        print("📁 [STARTUP] Initializing database...")
+        print("📁 [STARTUP] Initializing database..."); sys.stdout.flush()
+        db_start = time.time()
         init_database()
-        print("✅ [STARTUP] Database initialized successfully")
+        print(f"✅ [STARTUP] Database initialized successfully in {time.time() - db_start:.2f}s"); sys.stdout.flush()
         
         # Step 2: Validate HDBSCAN (Critical check for build issues)
-        print("🧠 [STARTUP] Testing HDBSCAN/Clustering engine...")
+        print("🧠 [STARTUP] Testing HDBSCAN/Clustering engine..."); sys.stdout.flush()
+        hdb_start = time.time()
         try:
             import hdbscan
             import numpy as np
             test_data = np.random.rand(10, 2)
             hdbscan.HDBSCAN(min_cluster_size=2).fit(test_data)
-            print("✅ [STARTUP] HDBSCAN validated")
+            print(f"✅ [STARTUP] HDBSCAN validated in {time.time() - hdb_start:.2f}s"); sys.stdout.flush()
         except Exception as e:
-            print(f"⚠️ [STARTUP] HDBSCAN warning: {e}. Narrative discovery may fail.")
+            print(f"⚠️ [STARTUP] HDBSCAN warning: {e}. Narrative discovery may fail."); sys.stdout.flush()
 
         # Step 3: Start background monitoring with a delay
         # This prevents blocking the initial server health check
@@ -110,14 +114,14 @@ async def lifespan(app: FastAPI):
         task = asyncio.create_task(delayed_monitoring())
         background_tasks.add(task)
         task.add_done_callback(lambda t: background_tasks.discard(t))
-        print("📡 [STARTUP] Background tasks scheduled")
+        print("📡 [STARTUP] Background tasks scheduled!"); sys.stdout.flush()
         
     except Exception as e:
-        print(f"❌ [STARTUP] CRITICAL FAILURE DURING LIFESPAN: {e}")
+        print(f"❌ [STARTUP] CRITICAL FAILURE DURING LIFESPAN: {e}"); sys.stdout.flush()
         import traceback
         traceback.print_exc()
 
-    print("🌟 [STARTUP] Lifespan complete - server is ready to accept connections")
+    print("🌟 [STARTUP] Lifespan complete - server is ready to accept connections"); sys.stdout.flush()
     yield
     
     # Cleanup
@@ -386,54 +390,65 @@ async def get_price_history(
                 }
                 for p in db_prices
             ]
-        else:
-            # Fetch from yfinance and cache
-            try:
-                import yfinance as yf
-                
-                # Get silver ETF data (SLV) and convert to INR/gram
-                ticker = yf.Ticker("SI=F")  # Silver futures
-                hist = ticker.history(period=f"{min(hours // 24 + 1, 7)}d", interval="1h")
-                
-                # Get USD to INR rate
-                usd_inr = yf.Ticker("USDINR=X")
-                usd_inr_rate = usd_inr.info.get("regularMarketPrice", 83.0)
-                
-                # Convert: Silver is in USD/troy oz, we need INR/gram
-                # Convert: Silver is in USD/troy oz, we need INR/gram
-                # Added premium (~4.15) to account for duties/GST/MCX premiums (Target ~334 INR/g)
-                INDIA_PREMIUM = 4.15
-                conversion_factor = (usd_inr_rate / 31.1035) * INDIA_PREMIUM
-                
-                prices = []
-                for timestamp, row in hist.iterrows():
-                    price_inr = row["Close"] * conversion_factor
-                    price_entry = {
-                        "price": round(price_inr, 2),
-                        "timestamp": timestamp.isoformat(),
-                        "open": round(row["Open"] * conversion_factor, 2) if row["Open"] else None,
-                        "high": round(row["High"] * conversion_factor, 2) if row["High"] else None,
-                        "low": round(row["Low"] * conversion_factor, 2) if row["Low"] else None,
-                        "close": round(row["Close"] * conversion_factor, 2) if row["Close"] else None
-                    }
-                    prices.append(price_entry)
+                # Fetch from yfinance and cache
+                print("📡 [PRICE] Fetching historical data from yfinance..."); sys.stdout.flush()
+                try:
+                    import yfinance as yf
                     
-                    # Cache in database
-                    db_price = PriceData(
-                        timestamp=timestamp.to_pydatetime(),
-                        price=price_inr,
-                        open_price=row["Open"] * conversion_factor if row["Open"] else None,
-                        high_price=row["High"] * conversion_factor if row["High"] else None,
-                        low_price=row["Low"] * conversion_factor if row["Low"] else None,
-                        close_price=row["Close"] * conversion_factor if row["Close"] else None,
-                        volume=row["Volume"] if "Volume" in row else None,
-                        source="yfinance"
-                    )
-                    session.merge(db_price)
+                    # Get silver ETF data (SLV) and convert to INR/gram
+                    ticker = yf.Ticker("SI=F")  # Silver futures
+                    # Use history instead of info
+                    hist_period = f"{min(hours // 24 + 1, 7)}d"
+                    hist = ticker.history(period=hist_period, interval="1h")
+                    
+                    # Get USD to INR rate reliably
+                    try:
+                        usd_inr_ticker = yf.Ticker("USDINR=X")
+                        usd_inr_hist = usd_inr_ticker.history(period="1d")
+                        usd_inr_rate = usd_inr_hist["Close"].iloc[-1] if not usd_inr_hist.empty else 83.5
+                        print(f"✅ [PRICE] USD/INR rate: {usd_inr_rate}"); sys.stdout.flush()
+                    except:
+                        usd_inr_rate = 83.5
+                        print("⚠️ [PRICE] Using default USD/INR rate: 83.5"); sys.stdout.flush()
+                    
+                    # Convert: Silver is in USD/troy oz, we need INR/gram
+                    INDIA_PREMIUM = 4.15
+                    conversion_factor = (usd_inr_rate / 31.1035) * INDIA_PREMIUM
+                    
+                    prices = []
+                    if not hist.empty:
+                        for timestamp, row in hist.iterrows():
+                            price_inr = row["Close"] * conversion_factor
+                            price_entry = {
+                                "price": round(price_inr, 2),
+                                "timestamp": timestamp.isoformat(),
+                                "open": round(row["Open"] * conversion_factor, 2) if "Open" in row else None,
+                                "high": round(row["High"] * conversion_factor, 2) if "High" in row else None,
+                                "low": round(row["Low"] * conversion_factor, 2) if "Low" in row else None,
+                                "close": round(row["Close"] * conversion_factor, 2) if "Close" in row else None
+                            }
+                            prices.append(price_entry)
+                            
+                            # Cache in database
+                            db_price = PriceData(
+                                timestamp=timestamp.to_pydatetime(),
+                                price=price_inr,
+                                open_price=row["Open"] * conversion_factor if "Open" in row else None,
+                                high_price=row["High"] * conversion_factor if "High" in row else None,
+                                low_price=row["Low"] * conversion_factor if "Low" in row else None,
+                                close_price=row["Close"] * conversion_factor if "Close" in row else None,
+                                volume=row["Volume"] if "Volume" in row else None,
+                                source="yfinance"
+                            )
+                            session.merge(db_price)
+                        
+                        session.commit()
+                        print(f"✅ [PRICE] Cached {len(prices)} price points"); sys.stdout.flush()
+                    else:
+                        print("⚠️ [PRICE] yfinance returned empty history"); sys.stdout.flush()
+                        raise Exception("Empty history")
                 
-                session.commit()
-                
-            except Exception as e:
+                except Exception as e:
                 print(f"yfinance fetch failed: {e}, using simulated data")
                 # Fallback to simulated data
                 import random
@@ -1223,4 +1238,4 @@ if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting SilverSentinel via uvicorn.run on port 7860..."); sys.stdout.flush()
     # Host 0.0.0.0 is crucial for Hugging Face Spaces
-    uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

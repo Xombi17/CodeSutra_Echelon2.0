@@ -34,6 +34,7 @@ class NewsCollector:
         """
         if not self.api_key:
             print("⚠️ NewsAPI key not configured, using mock data")
+            sys.stdout.flush()
             return self._mock_articles()
         
         from_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
@@ -68,6 +69,7 @@ class NewsCollector:
         
         except Exception as e:
             print(f"❌ NewsAPI error: {e}")
+            sys.stdout.flush()
             return []
     
     def _mock_articles(self) -> List[Dict[str, Any]]:
@@ -109,17 +111,18 @@ class PriceCollector:
         self.usd_inr_rate = 83.50  # Default rate, will be updated
     
     def _get_usd_inr_rate(self) -> float:
-        """Get current USD/INR exchange rate"""
+        """Get current USD/INR exchange rate using history for speed and reliability"""
         try:
             ticker = yf.Ticker("USDINR=X")
-            info = ticker.info
-            if info and 'regularMarketPrice' in info:
-                rate = info.get('regularMarketPrice', 83.50)
+            # history(1d) is much faster and more reliable than .info
+            hist = ticker.history(period="1d")
+            if not hist.empty:
+                rate = hist["Close"].iloc[-1]
                 print(f"✅ USD/INR rate: ₹{rate:.2f}")
                 self.usd_inr_rate = rate
                 return rate
         except Exception as e:
-            print(f"⚠️ Could not fetch USD/INR rate, using default: {e}")
+            print(f"⚠️ Could not fetch USD/INR rate via yfinance, using default: {e}")
         return self.usd_inr_rate
     
     
@@ -150,15 +153,18 @@ class PriceCollector:
         # Try yfinance with multiple symbols
         for symbol in self.symbols:
             try:
+                print(f"📡 Testing {symbol} via yfinance history...")
                 ticker = yf.Ticker(symbol)
-                info = ticker.info
+                # Use history(1d) instead of info as it's much faster and more reliable
+                hist = ticker.history(period="1d")
                 
-                if info and 'regularMarketPrice' in info:
-                    usd_price_per_oz = info.get('regularMarketPrice', 0)
-                    usd_prev_close_per_oz = info.get('previousClose', usd_price_per_oz)
+                if not hist.empty:
+                    usd_price_per_oz = hist["Close"].iloc[-1]
+                    usd_prev_close_per_oz = hist["Open"].iloc[-1] if len(hist) > 0 else usd_price_per_oz
+                    volume = hist["Volume"].iloc[-1] if "Volume" in hist.columns else 0
                     
                     # Convert from USD per troy ounce to INR per gram
-                    # Added a premium multiplier (~1.25) to account for India's import duties, GST, and MCX premiums
+                    # Added a premium multiplier (~1.25 to 4.15) to account for India's import duties, GST, and MCX premiums
                     # This helps align $30-32/oz spot with ₹334/g target
                     india_premium = 4.15 # Multiplier to reach ~₹334/g from ~$30/oz
                     usd_price_per_gram = (usd_price_per_oz / self.TROY_OUNCE_TO_GRAMS) * india_premium
@@ -174,7 +180,7 @@ class PriceCollector:
                         "previous_close": prev_close,
                         "price_change": current_price - prev_close,
                         "price_change_pct": ((current_price - prev_close) / prev_close * 100) if prev_close else 0,
-                        "volume": info.get('volume', 0),
+                        "volume": int(volume),
                         "timestamp": datetime.now(),
                         "source": f"Silver Spot",
                         "currency": "INR",
@@ -183,7 +189,8 @@ class PriceCollector:
                     }
                     self.last_known_price = data
                     return data
-            except Exception:
+            except Exception as e:
+                print(f"⚠️ Failed to fetch {symbol}: {e}")
                 continue
         
         # Fallback: Use estimated data
@@ -249,6 +256,7 @@ class DataCollectionOrchestrator:
             Dict with articles, posts, and prices
         """
         print("🔄 Collecting data from all sources (NewsAPI only)...")
+        sys.stdout.flush()
         
         # Build collection tasks
         tasks = [
@@ -264,6 +272,7 @@ class DataCollectionOrchestrator:
         prices = results[1] if not isinstance(results[1], Exception) else []
         
         print(f"✅ Collected: {len(articles)} articles, {len(prices)} price points")
+        sys.stdout.flush()
         
         return {
             "articles": articles,
@@ -294,7 +303,7 @@ class DataCollectionOrchestrator:
                         source=article_data["source"],
                         published_at=article_data["published_at"],
                         author=article_data.get("author"),
-                        metadata=article_data.get("metadata")
+                        article_metadata=article_data.get("metadata")
                     )
                     session.add(article)
             
@@ -311,10 +320,12 @@ class DataCollectionOrchestrator:
             
             session.commit()
             print(f"💾 Saved data to database")
+            sys.stdout.flush()
         
         except Exception as e:
             session.rollback()
             print(f"❌ Database save error: {e}")
+            sys.stdout.flush()
         finally:
             session.close()
 
@@ -348,6 +359,7 @@ def format_for_narrative_discovery(data: Dict[str, Any]) -> List[Dict[str, Any]]
 
 
 if __name__ == "__main__":
+    import sys
     # Test data collection
     async def test():
         data = await collector.collect_all(news_days_back=3, price_period="5d")
