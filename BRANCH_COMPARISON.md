@@ -150,6 +150,101 @@ Both branches include:
 
 ---
 
+## Geographic Bias Feature Analysis
+
+### In compare-final-mvp-implementation (Current Branch) ✅
+
+**Location**: `backend/vision/valuation_engine.py`
+
+The current branch includes **basic Indian market support**:
+- ✅ INR currency for valuations (default)
+- ✅ USD to INR conversion (~83 exchange rate)
+- ✅ Price calculations in INR per gram
+
+**Code Example**:
+```python
+currency: str = "INR"
+usd_to_inr = 83.0  # Approximate forex rate
+spot_inr_gram = (spot_usd_oz / 31.1035) * usd_to_inr
+```
+
+**Sample Data References**:
+- Wedding season mentions in demo data
+- Festival references (Diwali) in seed data
+- Indian market context in data collection examples
+
+**Limitation**: Currency conversion only, no deep market analysis
+
+---
+
+### In compare-main-with-abhishek (Enhanced Branch) ⭐⭐⭐
+
+**Location**: `backend/multi_agent.py`
+
+The enhanced branch includes **comprehensive Indian market integration**:
+
+**1. Multi-Agent System Prompt Integration**
+Every agent is explicitly trained with Indian market context:
+
+```python
+"""You are {agent_name}, a specialized silver market analyst 
+with expertise in INDIAN and global markets.
+
+INDIAN MARKET CONTEXT (Always consider):
+- MCX Silver futures pricing and trends
+- Import duty impact (currently 10% on silver)
+- Rupee-Dollar exchange rate effects on import costs
+- Wedding season demand (Oct-Dec, Apr-Jun peaks)
+- Festival buying (Dhanteras, Akshaya Tritaya, Diwali)
+- Indian household investment patterns (physical silver as savings)
+- Government policies on precious metal imports
+- Comparison with global COMEX prices
+
+CRITICAL RULES:
+1. Analyze from BOTH Indian and global perspective
+4. Consider Indian market dynamics explicitly
+"""
+```
+
+**2. INR Price Calculations with MCX Multiplier**
+```python
+MCX_MULTIPLIER = ~2750  # USD/oz -> INR/kg conversion
+current_price_inr = current_price * MCX_MULTIPLIER
+```
+
+**3. Indian Market Factors Analyzed**
+- **Seasonal Demand**: Wedding season peaks, festival buying patterns
+- **Currency Impact**: Rupee-dollar effects on import costs
+- **Regulatory**: Import duty impacts (10% on silver)
+- **Cultural**: Physical silver as household savings investment
+- **Market Structure**: MCX vs COMEX pricing arbitrage opportunities
+- **Government Policy**: Precious metal import regulations
+
+**4. Dual Perspective Analysis**
+All 5 agents (Fundamental, Sentiment, Technical, Risk, Macro) analyze from:
+- Global market perspective (COMEX, international supply/demand)
+- Indian market perspective (MCX, domestic factors)
+
+---
+
+### Geographic Bias Comparison Summary
+
+| Feature | compare-final-mvp-implementation | compare-main-with-abhishek |
+|---------|----------------------------------|---------------------------|
+| **Currency Support** | ✅ INR (basic) | ✅ INR (advanced MCX integration) |
+| **Exchange Rate** | ✅ Static conversion | ✅ Dynamic analysis |
+| **Indian Festivals** | ⚠️ Demo data only | ✅ Core analysis factor |
+| **Wedding Seasons** | ⚠️ Demo data only | ✅ Demand modeling |
+| **MCX Futures** | ❌ Not considered | ✅ Primary price reference |
+| **Import Duty** | ❌ Not considered | ✅ 10% impact analysis |
+| **Cultural Context** | ❌ Not considered | ✅ Household savings patterns |
+| **Policy Analysis** | ❌ Not considered | ✅ Government regulations |
+| **Market Depth** | Basic currency conversion | Deep market understanding |
+
+**Key Insight**: While `compare-final-mvp-implementation` has **surface-level** Indian market support (INR currency), `compare-main-with-abhishek` has **systemic** Indian market integration where every analysis explicitly considers Indian market dynamics, cultural factors, and regulatory environment.
+
+---
+
 ## Code Statistics
 
 | Metric | compare-main-with-abhishek | compare-final-mvp-implementation | Delta |
