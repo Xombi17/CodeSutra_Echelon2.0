@@ -379,8 +379,9 @@ async def get_price_history(
                 }
                 for p in db_prices
             ]
-                # Fetch from yfinance and cache
-                print("📡 [PRICE] Fetching historical data from yfinance..."); sys.stdout.flush()
+        else:
+            # Fetch from yfinance and cache
+            print("📡 [PRICE] Fetching historical data from yfinance..."); sys.stdout.flush()
                 try:
                     import yfinance as yf
                     
