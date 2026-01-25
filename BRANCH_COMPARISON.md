@@ -202,13 +202,15 @@ INDIAN MARKET CONTEXT (Always consider):
 
 CRITICAL RULES:
 1. Analyze from BOTH Indian and global perspective
+2. Use ONLY the evidence provided
+3. Be opinionated but evidence-based
 4. Consider Indian market dynamics explicitly
 """
 ```
 
 **2. INR Price Calculations with MCX Multiplier**
 ```python
-MCX_MULTIPLIER = ~2750  # USD/oz -> INR/kg conversion
+MCX_MULTIPLIER = 2750  # Approximately 2750 (USD/oz -> INR/kg conversion)
 current_price_inr = current_price * MCX_MULTIPLIER
 ```
 
@@ -233,8 +235,8 @@ All 5 agents (Fundamental, Sentiment, Technical, Risk, Macro) analyze from:
 |---------|----------------------------------|---------------------------|
 | **Currency Support** | ✅ INR (basic) | ✅ INR (advanced MCX integration) |
 | **Exchange Rate** | ✅ Static conversion | ✅ Dynamic analysis |
-| **Indian Festivals** | ⚠️ Demo data only | ✅ Core analysis factor |
-| **Wedding Seasons** | ⚠️ Demo data only | ✅ Demand modeling |
+| **Indian Festivals** | Limited (demo data only) | ✅ Core analysis factor |
+| **Wedding Seasons** | Limited (demo data only) | ✅ Demand modeling |
 | **MCX Futures** | ❌ Not considered | ✅ Primary price reference |
 | **Import Duty** | ❌ Not considered | ✅ 10% impact analysis |
 | **Cultural Context** | ❌ Not considered | ✅ Household savings patterns |
