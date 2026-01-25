@@ -245,6 +245,7 @@ async def get_current_user_info(current_user: TokenData = Depends(require_auth))
 # Narrative Endpoints
 # =====================
 
+@app.get("/narratives")
 @app.get("/api/narratives")
 async def get_narratives(
     active_only: bool = True,
@@ -328,6 +329,7 @@ async def get_narrative_forecast(narrative_id: int):
         session.close()
 
 
+@app.get("/trading-signal")
 @app.get("/api/trading-signal")
 async def get_trading_signal():
     """Get current trading recommendation"""
@@ -349,6 +351,7 @@ async def get_trading_signal():
     }
 
 
+@app.get("/price/current")
 @app.get("/api/price/current")
 async def get_current_price():
     """Get current silver price in INR per gram"""
@@ -371,6 +374,7 @@ async def get_current_price():
     }
 
 
+@app.get("/price/history")
 @app.get("/api/price/history")
 async def get_price_history(
     hours: int = Query(default=24, ge=1, le=168, description="Hours of history (1-168)")
@@ -498,6 +502,7 @@ async def get_price_history(
         session.close()
 
 
+@app.get("/stability")
 @app.get("/api/stability")
 async def get_stability_score():
     """Get current market stability assessment"""
@@ -1255,5 +1260,5 @@ if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting SilverSentinel via uvicorn.run on port 7860..."); sys.stdout.flush()
     # Host 0.0.0.0 is crucial for Hugging Face Spaces
-    # Pass app object directly to avoid re-importing 'main' module
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    # Use string format to ensure proper module loading and route registration
+    uvicorn.run("main:app", host="0.0.0.0", port=7860)
