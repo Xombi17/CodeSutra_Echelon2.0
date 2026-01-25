@@ -405,24 +405,24 @@ async def get_price_history(
         else:
             # Fetch from yfinance and cache
             print("📡 [PRICE] Fetching historical data from yfinance..."); sys.stdout.flush()
+            try:
+                import yfinance as yf
+                
+                # Get silver ETF data (SLV) and convert to INR/gram
+                ticker = yf.Ticker("SI=F")  # Silver futures
+                # Use history instead of info
+                hist_period = f"{min(hours // 24 + 1, 7)}d"
+                hist = ticker.history(period=hist_period, interval="1h")
+                
+                # Get USD to INR rate reliably
                 try:
-                    import yfinance as yf
-                    
-                    # Get silver ETF data (SLV) and convert to INR/gram
-                    ticker = yf.Ticker("SI=F")  # Silver futures
-                    # Use history instead of info
-                    hist_period = f"{min(hours // 24 + 1, 7)}d"
-                    hist = ticker.history(period=hist_period, interval="1h")
-                    
-                    # Get USD to INR rate reliably
-                    try:
-                        usd_inr_ticker = yf.Ticker("USDINR=X")
-                        usd_inr_hist = usd_inr_ticker.history(period="1d")
-                        usd_inr_rate = usd_inr_hist["Close"].iloc[-1] if not usd_inr_hist.empty else 83.5
-                        print(f"✅ [PRICE] USD/INR rate: {usd_inr_rate}"); sys.stdout.flush()
-                    except:
-                        usd_inr_rate = 83.5
-                        print("⚠️ [PRICE] Using default USD/INR rate: 83.5"); sys.stdout.flush()
+                    usd_inr_ticker = yf.Ticker("USDINR=X")
+                    usd_inr_hist = usd_inr_ticker.history(period="1d")
+                    usd_inr_rate = usd_inr_hist["Close"].iloc[-1] if not usd_inr_hist.empty else 83.5
+                    print(f"✅ [PRICE] USD/INR rate: {usd_inr_rate}"); sys.stdout.flush()
+                except:
+                    usd_inr_rate = 83.5
+                    print("⚠️ [PRICE] Using default USD/INR rate: 83.5"); sys.stdout.flush()
                     
                     # Convert: Silver is in USD/troy oz, we need INR/gram
                     INDIA_PREMIUM = 4.15
