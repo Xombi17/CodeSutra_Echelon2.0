@@ -505,3 +505,56 @@ class VisionPipeline:
         )
         
         return round(score, 2)
+
+"""
+ADD THIS HELPER METHOD TO THE BOTTOM OF YOUR EXISTING vision_pipeline.py
+
+Location: After the VisionPipeline class definition, before if __name__ == "__main__"
+"""
+
+# ... your existing VisionPipeline class code stays the same ...
+
+
+# ADD THIS METHOD TO VisionPipeline CLASS:
+class VisionPipeline:
+    # ... all your existing methods stay the same ...
+    
+    def get_measurement_issues(self, analysis: VisionAnalysisResult) -> list[str]:
+        """
+        NEW METHOD - Detect specific measurement issues for uncertainty reporting
+        
+        Add this method to your existing VisionPipeline class
+        """
+        issues = []
+        
+        # Purity issues
+        if analysis.purity_confidence in ["low", "none"]:
+            issues.append("No hallmark visible - purity is estimated")
+        
+        # Reference object issues
+        if analysis.reference_object:
+            if analysis.reference_object.confidence == "low":
+                issues.append("Reference object detection uncertain")
+            if "assumed" in analysis.reference_object.value.lower():
+                issues.append("Reference object type assumed (not confirmed)")
+        
+        # Shape complexity issues
+        if analysis.detected_type in ["chain", "bracelet", "jewelry"]:
+            issues.append("Complex 3D shape - may be hollow")
+            issues.append("Weight likely OVERESTIMATED for hollow items")
+        
+        if analysis.detected_type == "ring":
+            issues.append("May be hollow - single photo limitation")
+        
+        # Thickness issues
+        if analysis.thickness_mm:
+            issues.append("Thickness estimated from single photo (±40% error)")
+        
+        # Quality issues
+        if analysis.quality_score < 60:
+            issues.append("Poor condition detected - valuation reduced")
+        
+        return issues
+
+
+# That's it! Only this one method needs to be added to your existing class        
