@@ -12,6 +12,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Install system dependencies required for OpenCV and other tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
