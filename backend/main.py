@@ -1,3 +1,4 @@
+# Startup Trace Timestamp: 2026-01-25 19:49
 import sys
 print("--- [DEBUG] STARTING MAIN.PY IMPORT PHASE ---"); sys.stdout.flush()
 import os
