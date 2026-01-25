@@ -98,22 +98,67 @@ async def lifespan(app: FastAPI):
         from database import init_database
         init_database()
         
-        # Step 1.5: Seed demo data if database is empty
+        # Step 1.5: Discover real narratives from news if database is empty
         session = get_session()
         narrative_count = session.query(Narrative).count()
         session.close()
         
         if narrative_count == 0:
-            print("🌱 [STARTUP] Database is empty, seeding demo data..."); sys.stdout.flush()
+            print("🔍 [STARTUP] Database is empty, discovering narratives from news..."); sys.stdout.flush()
             try:
-                from seed_demo_data import DemoDataSeeder
-                seeder = DemoDataSeeder()
-                await seeder.seed_all()
-                print("✅ [STARTUP] Demo data seeded successfully!"); sys.stdout.flush()
+                # Import necessary modules
+                from narrative.narrative_discovery import NarrativeDiscoveryEngine
+                from data_collection import format_for_narrative_discovery, collector as data_collector
+                
+                # Collect news articles
+                print("📰 [STARTUP] Collecting news articles..."); sys.stdout.flush()
+                data = await data_collector.collect_all(news_days_back=7)
+                
+                # Format for discovery
+                articles = format_for_narrative_discovery(data)
+                print(f"📚 [STARTUP] Collected {len(articles)} articles"); sys.stdout.flush()
+                
+                if len(articles) >= 3:
+                    # Run discovery pipeline
+                    print("🤖 [STARTUP] Running AI narrative discovery..."); sys.stdout.flush()
+                    engine = NarrativeDiscoveryEngine()
+                    narratives, metadata = await engine.discover_narratives(articles, top_n=5)
+                    
+                    # Save to database
+                    session = get_session()
+                    for narrative in narratives:
+                        db_narrative = Narrative(
+                            name=narrative.theme,
+                            description=narrative.description,
+                            strength=narrative.strength,
+                            sentiment=narrative.sentiment,
+                            phase="birth",
+                            birth_date=datetime.utcnow(),
+                            last_updated=datetime.utcnow()
+                        )
+                        session.add(db_narrative)
+                    session.commit()
+                    session.close()
+                    
+                    print(f"✅ [STARTUP] Discovered and saved {len(narratives)} narratives!"); sys.stdout.flush()
+                else:
+                    print(f"⚠️ [STARTUP] Not enough articles ({len(articles)}) for narrative discovery"); sys.stdout.flush()
             except Exception as e:
-                print(f"⚠️ [STARTUP] Failed to seed demo data: {e}"); sys.stdout.flush()
+                print(f"⚠️ [STARTUP] Failed to discover narratives: {e}"); sys.stdout.flush()
+                import traceback
+                traceback.print_exc()
+                
+                # Fallback to demo data if discovery fails
+                print("🌱 [STARTUP] Falling back to demo narratives..."); sys.stdout.flush()
+                try:
+                    from seed_demo_data import DemoDataSeeder
+                    seeder = DemoDataSeeder()
+                    await seeder.seed_all()
+                    print("✅ [STARTUP] Demo data seeded as fallback!"); sys.stdout.flush()
+                except Exception as fallback_error:
+                    print(f"❌ [STARTUP] Demo fallback also failed: {fallback_error}"); sys.stdout.flush()
         else:
-            print(f"📊 [STARTUP] Database has {narrative_count} narratives, skipping seed"); sys.stdout.flush()
+            print(f"📊 [STARTUP] Database has {narrative_count} narratives, skipping discovery"); sys.stdout.flush()
         
         # Step 2: Lazy load heavy modules
         print("📥 [STARTUP] Loading core modules..."); sys.stdout.flush()
