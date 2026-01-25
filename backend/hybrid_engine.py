@@ -102,18 +102,26 @@ class HybridEngine:
             
             result = {
                 "narrative_id": narrative_id,
-                "phase": final_phase,
-                "strength": final_strength,
-                "confidence": final_confidence,
+                "consensus_lifecycle_phase": final_phase,
+                "consensus_strength_score": final_strength,
+                "overall_confidence": final_confidence,
+                "num_agents": agent_result.get("num_agents", 5),
                 "analysis_method": analysis_method,
-                "agent_consensus": agent_result["agent_votes"],
+                "agent_votes": agent_result["agent_votes"],
                 "minority_opinions": agent_result.get("minority_opinions", []),
                 "metrics": metrics,
                 "explanation": explanation,
                 "timestamp": datetime.utcnow().isoformat()
             }
             
-            print(f"   ✅ Hybrid analysis complete: {final_phase} (strength: {final_strength})")
+            # Step 5: Persist results to database
+            narrative.strength = final_strength
+            narrative.phase = final_phase
+            narrative.mention_velocity = metrics.get("current_velocity", 0)
+            narrative.price_correlation = metrics.get("price_correlation", 0)
+            session.commit()
+            
+            print(f"   ✅ Hybrid analysis complete and saved: {final_phase} (strength: {final_strength})")
             
             return result
         

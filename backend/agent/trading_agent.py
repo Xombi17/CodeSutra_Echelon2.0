@@ -31,8 +31,11 @@ class TradingAgent:
     Makes buy/sell decisions based on narrative lifecycle phases
     """
     
+    # Maximum number of signals to keep in memory
+    _max_signal_history = 100
+    
     def __init__(self):
-        self.signal_history = []
+        self.signal_history: List[Signal] = []
     
     async def generate_signal(self) -> Signal:
         """
@@ -260,6 +263,10 @@ class TradingAgent:
             session.commit()
             
             self.signal_history.append(signal)
+            
+            # Prevent memory leak by limiting signal history size
+            if len(self.signal_history) > self._max_signal_history:
+                self.signal_history = self.signal_history[-self._max_signal_history:]
             
             print(f"💾 Signal saved: {signal.action} (confidence: {signal.confidence:.0%})")
         

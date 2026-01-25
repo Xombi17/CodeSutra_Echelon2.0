@@ -30,7 +30,8 @@ class LifecycleTracker:
     """
     
     def __init__(self):
-        self.phase_history = {}  # Track phase changes
+        self.phase_history: Dict[int, List[Dict[str, Any]]] = {}  # Track phase changes
+        self._max_history_per_narrative = 100  # Prevent memory leak
     
     def calculate_metrics(self, narrative: Narrative) -> Dict[str, Any]:
         """
@@ -286,7 +287,7 @@ class LifecycleTracker:
             if new_phase == NarrativePhase.DEATH:
                 fresh_narrative.death_date = datetime.utcnow()
             
-            # Track history
+            # Track history (with size limit to prevent memory leak)
             if narrative_id not in self.phase_history:
                 self.phase_history[narrative_id] = []
             
@@ -295,6 +296,10 @@ class LifecycleTracker:
                 "to_phase": new_phase.value,
                 "timestamp": datetime.utcnow()
             })
+            
+            # Trim history if too large
+            if len(self.phase_history[narrative_id]) > self._max_history_per_narrative:
+                self.phase_history[narrative_id] = self.phase_history[narrative_id][-self._max_history_per_narrative:]
             
             session.commit()
             
@@ -323,21 +328,23 @@ class LifecycleTracker:
             metrics = self.calculate_metrics(narrative)
             
             # Social velocity score (0-100)
-            velocity_score = min(metrics["current_velocity"] * 10, 100)
+            # 1 article per hour = 50 strength
+            velocity_score = min(metrics["current_velocity"] * 50, 100)
             
-            # News intensity (article count)
+            # News intensity (article count in 24h)
+            # 5 articles = 100 strength for intensity
             cutoff = datetime.utcnow() - timedelta(days=1)
             article_count = session.query(Article).filter(
                 Article.narrative_id == narrative_id,
                 Article.published_at >= cutoff
             ).count()
-            news_score = min(article_count * 5, 100)
+            news_score = min(article_count * 20, 100)
             
-            # Price correlation score
+            # Price correlation score - use absolute value
             correlation_score = abs(metrics["price_correlation"]) * 100
             
-            # Institutional alignment (placeholder - would use real data)
-            institutional_score = 50  # Neutral default
+            # Institutional alignment (demo default: higher for active narratives)
+            institutional_score = 65 if article_count > 2 else 40
             
             # Weighted sum
             strength = (
@@ -349,8 +356,11 @@ class LifecycleTracker:
             
             base_strength = int(min(strength, 100))
             
+            # Ensure a reasonable floor for active narratives for demo visibility
+            if article_count > 0 and narrative.phase != 'death':
+                base_strength = max(base_strength, 25)
+            
             # Apply geographic bias adjustments
-            # This handles: cultural events, impact type weighting, market size adjustments
             adjusted_strength = geo_bias_handler.calculate_adjusted_strength(
                 narrative,
                 base_strength

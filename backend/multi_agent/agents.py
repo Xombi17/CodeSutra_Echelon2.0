@@ -86,9 +86,9 @@ class BaseAnalyst:
 
 **Your Task**:
 1. Determine lifecycle phase: birth, growth, peak, reversal, or death
-2. Rate strength (0-100): How impactful is this narrative?
-3. Provide confidence (0-100): How certain are you?
-4. Explain your reasoning briefly (2-3 sentences)
+2. Rate strength (0-100): How impactful is this narrative right now? Consider the volume of evidence and price potential.
+3. Provide confidence (0-100): How certain are you about this analysis?
+4. Explain your reasoning briefly (2-3 sentences). Be specific about the evidence.
 
 **Response Format** (strictly follow this):
 PHASE: [phase]
@@ -108,22 +108,37 @@ REASONING: [your reasoning]
         
         for line in lines:
             line = line.strip()
-            if line.startswith("PHASE:"):
-                phase = line.split(":", 1)[1].strip().lower()
-            elif line.startswith("STRENGTH:"):
+            upper_line = line.upper()
+            
+            if "PHASE:" in upper_line:
+                phase = line.split(":", 1)[1].strip().lower().replace("*", "").replace(".", "")
+            elif "STRENGTH:" in upper_line:
                 try:
-                    strength = int(line.split(":", 1)[1].strip())
+                    strength_str = "".join(filter(str.isdigit, line.split(":", 1)[1]))
+                    strength = int(strength_str) if strength_str else 50
                 except:
                     strength = 50
-            elif line.startswith("CONFIDENCE:"):
+            elif "CONFIDENCE:" in upper_line:
                 try:
-                    conf_val = int(line.split(":", 1)[1].strip())
-                    confidence = conf_val / 100.0
+                    conf_str = "".join(filter(str.isdigit, line.split(":", 1)[1]))
+                    if conf_str:
+                        conf_val = int(conf_str)
+                        # Handle both 0-1 and 0-100 formats
+                        confidence = conf_val / 100.0 if conf_val > 1 else conf_val
+                    else:
+                        confidence = 0.5
                 except:
                     confidence = 0.5
-            elif line.startswith("REASONING:"):
-                reasoning = line.split(":", 1)[1].strip()
+            elif "REASONING:" in upper_line:
+                reasoning = line.split(":", 1)[1].strip().replace("*", "")
         
+        # If reasoning is still default, try to find any non-tag line at the end
+        if reasoning == "Unable to parse response" and len(lines) > 0:
+            for line in reversed(lines):
+                if ":" not in line and len(line.strip()) > 20:
+                    reasoning = line.strip()
+                    break
+
         return AgentVoteResult(
             agent_name=self.name,
             phase_vote=phase,

@@ -39,6 +39,7 @@ python-socketio==5.11.0
 websockets==12.0
 
 # Utilities
+PyJWT==2.8.0
 numpy==1.26.3  # MUST be < 2.0.0 for pandas/scikit-learn compatibility in this environment
 pandas==2.2.0
 python-dateutil==2.8.2

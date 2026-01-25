@@ -132,26 +132,41 @@ class ValuationEngine:
             return self._cached_spot_price
         
         try:
-            # Fetch silver futures price (SI=F is silver symbol)
-            spot_usd_oz = await self._fetch_silver_price_yfinance()
+            # Use XAGUSD (silver spot) as primary - price per troy ounce
+            symbol = "XAGUSD=X"
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
             
-            # Convert USD/oz to INR/gram
-            # 1 troy ounce = 31.1035 grams
-            # USD to INR rate (approximate, ideally fetch live rate)
-            usd_to_inr = 83.0  # Update with live forex API in production
-            
-            spot_inr_gram = (spot_usd_oz / 31.1035) * usd_to_inr
-            
-            # Cache the result
-            self._cached_spot_price = spot_inr_gram
-            self._cache_timestamp = datetime.now()
-            
-            return spot_inr_gram
+            if info and 'regularMarketPrice' in info:
+                usd_price_per_oz = info.get('regularMarketPrice', 0)
+                
+                # Convert USD/oz to INR/gram
+                # 1 troy ounce = 31.1035 grams
+                troy_ounce_to_grams = 31.1035
+                
+                # Fetch live USD/INR rate or use realistic fallback
+                try:
+                    forex = yf.Ticker("INR=X")
+                    rate_info = forex.info
+                    usd_to_inr = rate_info.get('regularMarketPrice', 83.50)
+                except:
+                    usd_to_inr = 83.50
+                
+                spot_inr_gram = (usd_price_per_oz / troy_ounce_to_grams) * usd_to_inr
+                
+                # Cache the result
+                self._cached_spot_price = spot_inr_gram
+                self._cache_timestamp = datetime.now()
+                
+                print(f"✅ Valuation Engine: Fetched spot price ₹{spot_inr_gram:.2f}/gram (${usd_price_per_oz:.2f}/oz)")
+                return spot_inr_gram
+            else:
+                raise ValueError("No price data in info")
         
         except Exception as e:
             print(f"Failed to fetch spot price: {e}")
-            # Fallback to approximate price (update monthly)
-            return 75.0  # ₹75/gram fallback (approximately correct as of Jan 2024)
+            # Fallback based on realistic per-gram price (~₹95)
+            return 95.0 # Updated fallback to be more accurate for 2025/2026
     
     async def _fetch_silver_price_yfinance(self) -> float:
         """Fetch silver price from Yahoo Finance"""

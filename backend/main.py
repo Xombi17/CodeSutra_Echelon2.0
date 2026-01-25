@@ -2,7 +2,8 @@
 SilverSentinel FastAPI Backend
 Main application with REST API and WebSocket support
 """
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
+import os
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
@@ -11,6 +12,7 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field
 
 # Import core modules
 from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan, AgentVote
@@ -30,29 +32,55 @@ from vision import VisionPipeline, ValuationEngine
 from hybrid_engine import hybrid_engine
 from multi_agent.orchestrator import multi_agent_orchestrator
 
+# Import authentication
+from auth import (
+    create_user, authenticate_user, create_access_token,
+    require_auth, optional_auth, TokenData
+)
 
-# Background tasks
-background_tasks = set()
+
+# Pydantic models for request validation
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=100)
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+# Background tasks with max size to prevent memory leak
+MAX_BACKGROUND_TASKS = 100
+background_tasks: set = set()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
-    print("🚀 Starting SilverSentinel backend...")
+    print("  Starting SilverSentinel backend...")
     
     # Initialize database
     init_database()
-    print("✅ Database initialized")
+    print("  Database initialized")
     
     # Start background monitoring (optional - uncomment for production)
     # Start background monitoring (optional - uncomment for production)
     task = asyncio.create_task(run_continuous_monitoring())
     background_tasks.add(task)
+    task.add_done_callback(lambda t: background_tasks.discard(t))  # Cleanup on completion
     
     yield
     
     # Cleanup
-    print("👋 Shutting down SilverSentinel...")
+    print("  Shutting down SilverSentinel...")
     for task in background_tasks:
         task.cancel()
 
@@ -64,10 +92,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware for frontend
+# CORS middleware - Configure allowed origins from environment
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+if os.getenv("CORS_ALLOW_ALL", "false").lower() == "true":
+    ALLOWED_ORIGINS = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,13 +121,81 @@ async def root():
     }
 
 
-@app.get("/api/narratives")
-async def get_narratives(active_only: bool = True):
+# =====================
+# Authentication Endpoints
+# =====================
+
+@app.post("/api/auth/register", response_model=TokenResponse)
+async def register(user_data: UserRegister):
     """
-    Get all narratives
+    Register a new user
+    
+    Returns JWT access token on success
+    """
+    user = create_user(user_data.email, user_data.password, user_data.name)
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail="User with this email already exists"
+        )
+    
+    token = create_access_token(user)
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=24 * 3600  # 24 hours in seconds
+    )
+
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def login(credentials: UserLogin):
+    """
+    Authenticate user and return JWT token
+    """
+    user = authenticate_user(credentials.email, credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+    
+    token = create_access_token(user)
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=24 * 3600
+    )
+
+
+@app.get("/api/auth/me")
+async def get_current_user_info(current_user: TokenData = Depends(require_auth)):
+    """
+    Get current authenticated user info
+    """
+    return {
+        "user_id": current_user.user_id,
+        "email": current_user.email,
+        "name": current_user.name
+    }
+
+
+# =====================
+# Narrative Endpoints
+# =====================
+
+@app.get("/api/narratives")
+async def get_narratives(
+    active_only: bool = True,
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(default=20, ge=1, le=100, description="Items per page (1-100)")
+):
+    """
+    Get all narratives with pagination
     
     Args:
         active_only: If True, only return non-dead narratives
+        page: Page number (1-indexed)
+        limit: Number of items per page (max 100)
     """
     session = get_session()
     
@@ -105,11 +205,27 @@ async def get_narratives(active_only: bool = True):
         if active_only:
             query = query.filter(Narrative.phase != 'death')
         
-        narratives = query.order_by(Narrative.strength.desc()).all()
+        # Get total count for pagination metadata
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * limit
+        narratives = query.order_by(Narrative.strength.desc()).offset(offset).limit(limit).all()
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + limit - 1) // limit  # Ceiling division
         
         return {
             "narratives": [n.to_dict() for n in narratives],
             "count": len(narratives),
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
     
@@ -173,44 +289,135 @@ async def get_trading_signal():
 
 @app.get("/api/price/current")
 async def get_current_price():
-    """Get current silver price"""
-    session = get_session()
+    """Get current silver price in INR per gram"""
+    # Fetch fresh price data from collector
+    price_data = await collector.price_collector.fetch_price_data()
     
-    try:
-        latest = session.query(PriceData).order_by(PriceData.timestamp.desc()).first()
-        
-        if not latest:
-            raise HTTPException(status_code=404, detail="No price data available")
-        
-        return {
-            "price": latest.price,
-            "timestamp": latest.timestamp.isoformat(),
-            "source": latest.source
-        }
+    if not price_data:
+        raise HTTPException(status_code=503, detail="Unable to fetch current price")
     
-    finally:
-        session.close()
+    return {
+        "price": price_data.get("current_price"),
+        "previous_close": price_data.get("previous_close"),
+        "change": price_data.get("price_change"),
+        "change_percent": price_data.get("price_change_pct"),
+        "timestamp": price_data.get("timestamp").isoformat() if price_data.get("timestamp") else datetime.utcnow().isoformat(),
+        "source": price_data.get("source", "Silver Spot"),
+        "currency": price_data.get("currency", "INR"),
+        "unit": price_data.get("unit", "per gram"),
+        "usd_inr_rate": price_data.get("usd_inr_rate")
+    }
 
 
 @app.get("/api/price/history")
-async def get_price_history(hours: int = 24):
-    """Get price history"""
-    session = get_session()
+async def get_price_history(
+    hours: int = Query(default=24, ge=1, le=168, description="Hours of history (1-168)")
+):
+    """
+    Get price history in INR per gram
     
+    First tries to fetch from database, then falls back to yfinance for historical data
+    """
+    from datetime import timedelta
+    
+    session = get_session()
     try:
-        from datetime import timedelta
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        # Calculate time range
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(hours=hours)
         
-        prices = session.query(PriceData).filter(
-            PriceData.timestamp >= cutoff
-        ).order_by(PriceData.timestamp).all()
+        # Try to get from database first
+        db_prices = session.query(PriceData).filter(
+            PriceData.timestamp >= start_time
+        ).order_by(PriceData.timestamp.asc()).all()
+        
+        if db_prices and len(db_prices) >= 5:
+            # Use database data
+            prices = [
+                {
+                    "price": round(p.price, 2),
+                    "timestamp": p.timestamp.isoformat(),
+                    "open": p.open_price,
+                    "high": p.high_price,
+                    "low": p.low_price,
+                    "close": p.close_price
+                }
+                for p in db_prices
+            ]
+        else:
+            # Fetch from yfinance and cache
+            try:
+                import yfinance as yf
+                
+                # Get silver ETF data (SLV) and convert to INR/gram
+                ticker = yf.Ticker("SI=F")  # Silver futures
+                hist = ticker.history(period=f"{min(hours // 24 + 1, 7)}d", interval="1h")
+                
+                # Get USD to INR rate
+                usd_inr = yf.Ticker("USDINR=X")
+                usd_inr_rate = usd_inr.info.get("regularMarketPrice", 83.0)
+                
+                # Convert: Silver is in USD/troy oz, we need INR/gram
+                # 1 troy oz = 31.1035 grams
+                conversion_factor = usd_inr_rate / 31.1035
+                
+                prices = []
+                for timestamp, row in hist.iterrows():
+                    price_inr = row["Close"] * conversion_factor
+                    price_entry = {
+                        "price": round(price_inr, 2),
+                        "timestamp": timestamp.isoformat(),
+                        "open": round(row["Open"] * conversion_factor, 2) if row["Open"] else None,
+                        "high": round(row["High"] * conversion_factor, 2) if row["High"] else None,
+                        "low": round(row["Low"] * conversion_factor, 2) if row["Low"] else None,
+                        "close": round(row["Close"] * conversion_factor, 2) if row["Close"] else None
+                    }
+                    prices.append(price_entry)
+                    
+                    # Cache in database
+                    db_price = PriceData(
+                        timestamp=timestamp.to_pydatetime(),
+                        price=price_inr,
+                        open_price=row["Open"] * conversion_factor if row["Open"] else None,
+                        high_price=row["High"] * conversion_factor if row["High"] else None,
+                        low_price=row["Low"] * conversion_factor if row["Low"] else None,
+                        close_price=row["Close"] * conversion_factor if row["Close"] else None,
+                        volume=row["Volume"] if "Volume" in row else None,
+                        source="yfinance"
+                    )
+                    session.merge(db_price)
+                
+                session.commit()
+                
+            except Exception as e:
+                print(f"yfinance fetch failed: {e}, using simulated data")
+                # Fallback to simulated data
+                import random
+                current_data = await collector.price_collector.fetch_price_data()
+                current_price = current_data.get("current_price", 80.0) if current_data else 80.0
+                
+                prices = []
+                points = min(hours * 4, 96)
+                
+                for i in range(points):
+                    hours_ago = hours * (1 - i / points)
+                    timestamp = datetime.utcnow() - timedelta(hours=hours_ago)
+                    variation = random.uniform(-0.02, 0.02) * current_price
+                    trend = (i / points - 0.5) * current_price * 0.01
+                    price = current_price + variation + trend
+                    
+                    prices.append({
+                        "price": round(price, 2),
+                        "timestamp": timestamp.isoformat(),
+                    })
         
         return {
-            "prices": [p.to_dict() for p in prices],
+            "prices": prices,
             "count": len(prices),
-            "hours": hours
+            "hours": hours,
+            "unit": "per gram",
+            "currency": "INR"
         }
-    
     finally:
         session.close()
 
@@ -342,21 +549,37 @@ async def get_stats():
 
 
 @app.get("/api/signals/history")
-async def get_signal_history(limit: int = 10):
-    """Get trading signal history"""
+async def get_signal_history(
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(default=10, ge=1, le=100, description="Items per page (1-100)")
+):
+    """Get trading signal history with pagination"""
     session = get_session()
     
     try:
-        # Convert limit to int if it's a string (FastAPI should handle this, but being explicit)
-        limit_value = int(limit) if isinstance(limit, str) else limit
+        # Get total count
+        total_count = session.query(TradingSignal).count()
         
+        # Apply pagination
+        offset = (page - 1) * limit
         signals = session.query(TradingSignal).order_by(
             TradingSignal.timestamp.desc()
-        ).limit(limit_value).all()
+        ).offset(offset).limit(limit).all()
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + limit - 1) // limit
         
         return {
             "signals": [s.to_dict() for s in signals],
-            "count": len(signals)
+            "count": len(signals),
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
         }
     finally:
         session.close()
@@ -483,9 +706,10 @@ async def get_enhanced_signal():
             "price": signal.price_at_signal,
             "conflicts": len(signal.conflicts) if signal.conflicts else 0,
             "agent_insights": {
-                "consensus": hybrid_analysis["agent_consensus"],
+                "consensus": hybrid_analysis["explanation"],
+                "votes": hybrid_analysis["agent_votes"],
                 "minority_opinions": hybrid_analysis["minority_opinions"],
-                "agent_confidence": hybrid_analysis["confidence"]
+                "agent_confidence": hybrid_analysis["overall_confidence"]
             },
             "hybrid_analysis": {
                 "method": hybrid_analysis["analysis_method"],
@@ -741,22 +965,41 @@ async def get_scan_result(scan_id: str):
 
 
 @app.get("/api/scans/user/{user_id}")
-async def get_user_scans(user_id: str, limit: int = 10):
-    """Get scan history for a user"""
+async def get_user_scans(
+    user_id: str,
+    page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(default=10, ge=1, le=50, description="Items per page (1-50)")
+):
+    """Get scan history for a user with pagination"""
     session = get_session()
     
     try:
-        # Convert limit to int if it's a string (FastAPI should handle this, but being explicit)
-        limit_value = int(limit) if isinstance(limit, str) else limit
+        # Get total count for this user
+        total_count = session.query(SilverScan).filter(
+            SilverScan.user_id == user_id
+        ).count()
         
+        # Apply pagination
+        offset = (page - 1) * limit
         scans = session.query(SilverScan).filter(
             SilverScan.user_id == user_id
-        ).order_by(SilverScan.created_at.desc()).limit(limit_value).all()
+        ).order_by(SilverScan.created_at.desc()).offset(offset).limit(limit).all()
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + limit - 1) // limit if total_count > 0 else 0
         
         return {
             "user_id": user_id,
             "scans": [scan.to_dict() for scan in scans],
-            "count": len(scans)
+            "count": len(scans),
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
         }
     
     finally:

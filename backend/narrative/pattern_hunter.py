@@ -224,6 +224,7 @@ Respond with ONLY the narrative name, nothing else. Examples: "Mining Strike Con
                         birth_date=narrative_data['birth_date'],
                         article_count=narrative_data['article_count'],
                         sentiment=narrative_data['initial_sentiment'],
+                        strength=int(30 + min(narrative_data['article_count'] * 2, 20)), # Start at 30-50%
                         cluster_keywords={"keywords": narrative_data['cluster_keywords']}
                     )
                     session.add(narrative)

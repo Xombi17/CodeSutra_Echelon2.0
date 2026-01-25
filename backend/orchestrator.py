@@ -93,6 +93,20 @@ class MultiModelOrchestrator:
             "failures": 0
         }
     
+    async def generate_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 500
+    ) -> ModelResponse:
+        """ Simplified interface for direct LLM generation """
+        return await self.analyze_text(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            model_type="general"
+        )
+
     async def analyze_text(
         self,
         prompt: str,

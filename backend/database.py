@@ -69,14 +69,14 @@ class Article(Base):
     __tablename__ = "articles"
     
     id = Column(Integer, primary_key=True)
-    narrative_id = Column(Integer, ForeignKey("narratives.id"), nullable=True)
+    narrative_id = Column(Integer, ForeignKey("narratives.id"), nullable=True, index=True)
     
     title = Column(String(500), nullable=False)
     content = Column(Text, nullable=True)
     url = Column(String(1000), nullable=True, unique=True)
-    source = Column(String(100), nullable=False)  # newsapi, reddit, twitter
+    source = Column(String(100), nullable=False, index=True)  # newsapi, reddit, twitter
     
-    published_at = Column(DateTime, nullable=False)
+    published_at = Column(DateTime, nullable=False, index=True)
     fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     
     # Sentiment analysis
@@ -137,9 +137,9 @@ class TradingSignal(Base):
     __tablename__ = "trading_signals"
     
     id = Column(Integer, primary_key=True)
-    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     
-    action = Column(String(10), nullable=False)  # BUY, SELL, HOLD
+    action = Column(String(10), nullable=False, index=True)  # BUY, SELL, HOLD
     confidence = Column(Float, nullable=False)
     strength = Column(Integer, nullable=False)
     
@@ -236,7 +236,7 @@ class AgentVote(Base):
     __tablename__ = "agent_votes"
     
     id = Column(Integer, primary_key=True)
-    narrative_id = Column(Integer, ForeignKey("narratives.id"))
+    narrative_id = Column(Integer, ForeignKey("narratives.id"), index=True)
     agent_name = Column(String(50), nullable=False)  # "fundamental", "sentiment", etc.
     
     # Vote details
@@ -246,7 +246,7 @@ class AgentVote(Base):
     reasoning = Column(Text, nullable=True)
     
     # Metadata
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     debate_round = Column(Integer, default=1)
     
     # Relationships

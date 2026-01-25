@@ -3,8 +3,8 @@ SilverSentinel Configuration Management
 Centralized configuration for API keys, model settings, and thresholds
 """
 import os
-from dataclasses import dataclass
-from typing import Dict, Any
+from dataclasses import dataclass, field
+from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -65,17 +65,12 @@ class DataConfig:
     low_volatility_interval: int = 120
     
     # Source weighting for narrative discovery
-    source_weights: Dict[str, float] = None
-    
-    def __post_init__(self):
-        if self.source_weights is None:
-            self.source_weights = {
-                "twitter": 1.5,      # High influence
-                "news": 1.2,         # Professional journalism
-                "reddit": 1.0,       # Baseline community sentiment
-                "telegram": 0.8,     # Early signals but noisy
-                   # Trading community sentiment
-            }
+    source_weights: Dict[str, float] = field(default_factory=lambda: {
+        "twitter": 1.5,      # High influence
+        "news": 1.2,         # Professional journalism
+        "reddit": 1.0,       # Baseline community sentiment
+        "telegram": 0.8,     # Early signals but noisy
+    })
 
 
 @dataclass
@@ -228,11 +223,16 @@ def validate_config() -> Dict[str, Any]:
     if not config.data.news_api_key:
         issues.append("NEWS_API_KEY not set (optional but recommended)")
     
-    if not config.data.reddit_client_id or not config.data.reddit_client_secret:
-        issues.append("Reddit credentials not set (optional)")
+    # Check Twitter credentials (optional)
+    if not config.data.twitter_bearer_token and not config.data.twitter_api_key:
+        issues.append("Twitter credentials not set (optional)")
+    
+    # Check Telegram credentials (optional)
+    if not config.data.telegram_api_id:
+        issues.append("Telegram credentials not set (optional)")
     
     return {
-        "valid": len(issues) == 0,
+        "valid": len([i for i in issues if "optional" not in i.lower()]) == 0,
         "issues": issues,
         "warnings": [i for i in issues if "optional" in i.lower()],
         "errors": [i for i in issues if "optional" not in i.lower()]
