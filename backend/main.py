@@ -87,21 +87,10 @@ async def lifespan(app: FastAPI):
     try:
         # Step 1: Initialize database
         print("📁 [STARTUP] Initializing database..."); sys.stdout.flush()
-        db_start = time.time()
         init_database()
-        print(f"✅ [STARTUP] Database initialized successfully in {time.time() - db_start:.2f}s"); sys.stdout.flush()
         
-        # Step 2: Validate HDBSCAN (Critical check for build issues)
-        print("🧠 [STARTUP] Testing HDBSCAN/Clustering engine..."); sys.stdout.flush()
-        hdb_start = time.time()
-        try:
-            import hdbscan
-            import numpy as np
-            test_data = np.random.rand(10, 2)
-            hdbscan.HDBSCAN(min_cluster_size=2).fit(test_data)
-            print(f"✅ [STARTUP] HDBSCAN validated in {time.time() - hdb_start:.2f}s"); sys.stdout.flush()
-        except Exception as e:
-            print(f"⚠️ [STARTUP] HDBSCAN warning: {e}. Narrative discovery may fail."); sys.stdout.flush()
+        # Step 2: Skip HDBSCAN check (disabled for build speed)
+        print("🧠 [STARTUP] Clustering engine skipped (speed-optimized)"); sys.stdout.flush()
 
         # Step 3: Start background monitoring with a delay
         # This prevents blocking the initial server health check

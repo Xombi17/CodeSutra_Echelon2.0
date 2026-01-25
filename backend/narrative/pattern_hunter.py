@@ -32,12 +32,14 @@ class PatternHunter:
                 min_df=2
             )
         if self.clusterer is None:
-            from hdbscan import HDBSCAN
-            self.clusterer = HDBSCAN(
-                min_cluster_size=config.narrative.min_cluster_size,
-                min_samples=2,
-                metric='euclidean'
-            )
+            # from hdbscan import HDBSCAN
+            # self.clusterer = HDBSCAN(
+            #     min_cluster_size=config.narrative.min_cluster_size,
+            #     min_samples=2,
+            #     metric='euclidean'
+            # )
+            print("⚠️ HDBSCAN disabled to speed up HF build")
+            self.clusterer = None
 
     async def discover_narratives(
         self,
@@ -73,6 +75,10 @@ class PatternHunter:
             return []
         
         # Cluster
+        if self.clusterer is None:
+            print("⚠️ Skipping clustering step (HDBSCAN disabled)")
+            return []
+            
         try:
             cluster_labels = self.clusterer.fit_predict(vectors.toarray())
         except Exception as e:

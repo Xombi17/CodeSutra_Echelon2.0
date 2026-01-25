@@ -19,8 +19,8 @@ import re
 
 # ML/NLP imports
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import hdbscan
+# from sklearn.metrics.pairwise import cosine_similarity
+# import hdbscan
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -390,16 +390,19 @@ Return ONLY the JSON array, no other text."""
         texts = [f"{a['article'].title} {a['article'].content[:500]}" for a in articles]
         embeddings = self.embedder.encode(texts, show_progress_bar=False)
         
-        # Cluster with HDBSCAN
-        min_cluster_size = max(3, len(articles) // 10)  # Dynamic based on article count
+        # Cluster with HDBSCAN disabled for build speed
+        print("⚠️ HDBSCAN clustering disabled")
+        return []
         
-        clusterer = hdbscan.HDBSCAN(
-            min_cluster_size=min_cluster_size,
-            min_samples=2,
-            metric='euclidean'
-        )
+        # min_cluster_size = max(3, len(articles) // 10)  # Dynamic based on article count
         
-        labels = clusterer.fit_predict(embeddings)
+        # clusterer = hdbscan.HDBSCAN(
+        #     min_cluster_size=min_cluster_size,
+        #     min_samples=2,
+        #     metric='euclidean'
+        # )
+        
+        # labels = clusterer.fit_predict(embeddings)
         
         # Group articles by cluster
         clusters = defaultdict(list)
