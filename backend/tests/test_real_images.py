@@ -25,10 +25,9 @@ async def analyze_silver_chain():
     pipeline = VisionPipeline()
     valuation_engine = ValuationEngine()
     
-    # Test bracelet with ruler images
+    # Test bracelet with coin reference
     test_images = [
-        "data/test_images/bracelet_ruler_1.jpg",
-        "data/test_images/bracelet_ruler_2.jpg"
+        "data/test_images/coin_ref2.jpeg"
     ]
     
     for idx, image_path in enumerate(test_images, 1):
