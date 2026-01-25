@@ -519,6 +519,76 @@ async def get_agent_history(narrative_id: int):
 
 
 # =====================
+# Geographic Bias Transparency  
+# =====================
+
+@app.get("/api/bias/report")
+async def get_bias_report():
+    """
+    Get geographic bias transparency report
+    
+    Shows:
+    - Article distribution by region
+    - Bias warnings
+    - Adjustments applied to narratives
+    """
+    from narrative.geo_bias_handler import geo_bias_handler
+    report = geo_bias_handler.get_transparency_report()
+    return {"report": report, "timestamp": datetime.utcnow().isoformat()}
+
+
+@app.get("/api/bias/test")
+async def test_bias_adjustments():
+    """
+    Test geo bias adjustments on current narratives
+    
+    Returns before/after strength scores with explanations
+    """
+    from narrative.geo_bias_handler import geo_bias_handler
+    
+    session = get_session()
+    try:
+        narratives = session.query(Narrative).filter(
+            Narrative.phase != 'death'
+        ).all()
+        
+        results = []
+        for narrative in narratives:
+            # Calculate base strength (without geo bias)
+            base_strength = narrative.strength
+            
+            # Calculate adjusted strength
+            adjusted_strength = geo_bias_handler.calculate_adjusted_strength(
+                narrative,
+                base_strength
+            )
+            
+            # Generate explanation
+            explanation = geo_bias_handler.generate_adjustment_explanation(
+                narrative,
+                base_strength,
+                adjusted_strength
+            )
+            
+            results.append({
+                "narrative_id": narrative.id,
+                "narrative_name": narrative.name,
+                "base_strength": base_strength,
+                "adjusted_strength": adjusted_strength,
+                "adjustment_factor": adjusted_strength / base_strength if base_strength > 0 else 1.0,
+                "explanation": explanation
+            })
+        
+        return {
+            "narratives": results,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    finally:
+        session.close()
+
+
+# =====================
 # Camera Scanning Endpoints
 # =====================
 

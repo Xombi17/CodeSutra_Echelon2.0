@@ -10,6 +10,7 @@ import numpy as np
 from sqlalchemy.orm import Session
 from database import get_session, Narrative, Article, PriceData
 from narrative.sentiment_analyzer import sentiment_analyzer
+from narrative.geo_bias_handler import geo_bias_handler
 from config import config
 
 
@@ -346,7 +347,16 @@ class LifecycleTracker:
                 institutional_score * config.narrative.institutional_alignment_weight
             )
             
-            return int(min(strength, 100))
+            base_strength = int(min(strength, 100))
+            
+            # Apply geographic bias adjustments
+            # This handles: cultural events, impact type weighting, market size adjustments
+            adjusted_strength = geo_bias_handler.calculate_adjusted_strength(
+                narrative,
+                base_strength
+            )
+            
+            return adjusted_strength
         
         finally:
             session.close()
