@@ -462,21 +462,21 @@ async def get_price_history(
                         raise Exception("Empty history")
                 
                 except Exception as e:
-                print(f"yfinance fetch failed: {e}, using simulated data")
-                # Fallback to simulated data
-                import random
-                current_data = await collector.price_collector.fetch_price_data()
-                current_price = current_data.get("current_price", 80.0) if current_data else 80.0
-                
-                prices = []
-                points = min(hours * 4, 96)
-                
-                for i in range(points):
-                    hours_ago = hours * (1 - i / points)
-                    timestamp = datetime.utcnow() - timedelta(hours=hours_ago)
-                    variation = random.uniform(-0.02, 0.02) * current_price
-                    trend = (i / points - 0.5) * current_price * 0.01
-                    price = current_price + variation + trend
+                    print(f"yfinance fetch failed: {e}, using simulated data")
+                    # Fallback to simulated data
+                    import random
+                    current_data = await collector.price_collector.fetch_price_data()
+                    current_price = current_data.get("current_price", 80.0) if current_data else 80.0
+                    
+                    prices = []
+                    points = min(hours * 4, 96)
+                    
+                    for i in range(points):
+                        hours_ago = hours * (1 - i / points)
+                        timestamp = datetime.utcnow() - timedelta(hours=hours_ago)
+                        variation = random.uniform(-0.02, 0.02) * current_price
+                        trend = (i / points - 0.5) * current_price * 0.01
+                        price = current_price + variation + trend
                     
                     prices.append({
                         "price": round(price, 2),
