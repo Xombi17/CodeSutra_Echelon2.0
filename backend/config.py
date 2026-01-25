@@ -136,7 +136,7 @@ class TradingConfig:
 @dataclass
 class DatabaseConfig:
     """Database configuration"""
-    sqlite_path: str = "silversentinel.db"  # In current working directory
+    sqlite_path: str = "/tmp/silversentinel.db"  # Use /tmp for writable access in HF Spaces
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     cache_ttl_seconds: int = 3600  # 1 hour
 

@@ -36,6 +36,10 @@ from orchestrator import orchestrator
 print("DEBUG: Importing vision..."); sys.stdout.flush()
 from vision import VisionPipeline, ValuationEngine
 
+# Import database utilities
+print("Importing Database..."); sys.stdout.flush()
+from database import get_session
+
 # Import hybrid intelligence system
 print("DEBUG: Importing hybrid_engine..."); sys.stdout.flush()
 from hybrid_engine import hybrid_engine
