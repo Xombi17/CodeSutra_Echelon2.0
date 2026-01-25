@@ -7,8 +7,25 @@ import { api, TradingSignal, Narrative, MarketStability } from "@/lib/api";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import AppNavbar from "@/components/AppNavbar";
 
-// WebSocket URL from environment
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8000/ws/live";
+// WebSocket URL with dynamic fallback
+const getWsUrl = () => {
+    if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+    
+    // Check if we have an API URL to derive the WS URL from
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (apiUrl) {
+        // "https://user-space.hf.space/api" -> "wss://user-space.hf.space/ws/live"
+        // "http://127.0.0.1:8000/api" -> "ws://127.0.0.1:8000/ws/live"
+        return apiUrl
+            .replace('https://', 'wss://')
+            .replace('http://', 'ws://')
+            .replace('/api', '/ws/live');
+    }
+    
+    return "ws://127.0.0.1:8000/ws/live";
+};
+
+const WS_URL = getWsUrl();
 
 export default function DashboardPage() {
     const [signal, setSignal] = useState<TradingSignal | null>(null);
