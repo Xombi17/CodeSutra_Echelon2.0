@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libgl1 \
     libglib2.0-0 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file
@@ -43,5 +44,4 @@ COPY --chown=user . /code
 EXPOSE 7860
 
 # Command to run the application
-# Host 0.0.0.0 is crucial for Docker/HF Spaces
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["python", "main.py"]

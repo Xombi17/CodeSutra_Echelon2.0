@@ -1,4 +1,5 @@
-print("--- STARTING MAIN.PY IMPORT PHASE ---")
+import sys
+print("--- [DEBUG] STARTING MAIN.PY IMPORT PHASE ---"); sys.stdout.flush()
 import os
 print("Importing FastAPI...")
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Query
@@ -14,42 +15,42 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 # Import core modules
-print("DEBUG: Importing database...")
+print("DEBUG: Importing database..."); sys.stdout.flush()
 from database import init_database, get_session, Narrative, TradingSignal, PriceData, SilverScan, AgentVote
-print("DEBUG: Importing data_collection...")
+print("DEBUG: Importing data_collection..."); sys.stdout.flush()
 from data_collection import collector
-print("DEBUG: Importing resource_manager...")
+print("DEBUG: Importing resource_manager..."); sys.stdout.flush()
 from narrative.resource_manager import resource_manager
-print("DEBUG: Importing pattern_hunter...")
+print("DEBUG: Importing pattern_hunter..."); sys.stdout.flush()
 from narrative.pattern_hunter import pattern_hunter
-print("DEBUG: Importing lifecycle_tracker...")
+print("DEBUG: Importing lifecycle_tracker..."); sys.stdout.flush()
 from narrative.lifecycle_tracker import lifecycle_tracker
-print("DEBUG: Importing forecaster...")
+print("DEBUG: Importing forecaster..."); sys.stdout.flush()
 from narrative.forecaster import forecaster
-print("DEBUG: Importing trading_agent...")
+print("DEBUG: Importing trading_agent..."); sys.stdout.flush()
 from agent.trading_agent import trading_agent
-print("DEBUG: Importing stability_monitor...")
+print("DEBUG: Importing stability_monitor..."); sys.stdout.flush()
 from agent.stability_monitor import stability_monitor
-print("DEBUG: Importing orchestrator...")
+print("DEBUG: Importing orchestrator..."); sys.stdout.flush()
 from orchestrator import orchestrator
 
 # Import vision module
-print("DEBUG: Importing vision...")
+print("DEBUG: Importing vision..."); sys.stdout.flush()
 from vision import VisionPipeline, ValuationEngine
 
 # Import hybrid intelligence system
-print("DEBUG: Importing hybrid_engine...")
+print("DEBUG: Importing hybrid_engine..."); sys.stdout.flush()
 from hybrid_engine import hybrid_engine
-print("DEBUG: Importing multi_agent orchestrator...")
+print("DEBUG: Importing multi_agent orchestrator..."); sys.stdout.flush()
 from multi_agent.orchestrator import multi_agent_orchestrator
 
 # Import authentication
-print("DEBUG: Importing auth...")
+print("DEBUG: Importing auth..."); sys.stdout.flush()
 from auth import (
     create_user, authenticate_user, create_access_token,
     require_auth, optional_auth, TokenData
 )
-print("DEBUG: All imports complete!")
+print("DEBUG: All imports complete!"); sys.stdout.flush()
 
 
 # Pydantic models for request validation
@@ -1219,5 +1220,6 @@ async def run_continuous_monitoring():
 
 if __name__ == "__main__":
     import uvicorn
-    # Use import string "main:app" to enable reload
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    print("🚀 Starting SilverSentinel via uvicorn.run on port 7860..."); sys.stdout.flush()
+    # Host 0.0.0.0 is crucial for Hugging Face Spaces
+    uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=False)
