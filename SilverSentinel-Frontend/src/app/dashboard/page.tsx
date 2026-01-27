@@ -113,11 +113,23 @@ export default function DashboardPage() {
                     }
                 };
 
-                ws.onerror = (error) => {
-                    console.error("WebSocket error:", error);
+                ws.onerror = (event) => {
+                    // Browsers provide a generic Event here; log it and any underlying error if present
+                    console.error("WebSocket error event:", event);
+                    try {
+                        // Some environments attach an `error` property with more details
+                        // @ts-ignore
+                        if (event && (event as any).error) console.error("Underlying error:", (event as any).error);
+                    } catch (e) {
+                        console.error("Error inspecting WS error event:", e);
+                    }
+                    setEvents(prev => ["WebSocket encountered an error", ...prev].slice(0, 5));
                 };
-                
-                ws.onclose = () => {
+
+                ws.onclose = (ev) => {
+                    // Provide close code/reason for debugging and schedule reconnect
+                    console.warn("WebSocket closed:", (ev as any).code, (ev as any).reason, (ev as any).wasClean);
+                    setEvents(prev => [`WebSocket disconnected (code:${(ev as any).code})`, ...prev].slice(0, 5));
                     reconnectAttempts.current += 1;
                     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000); // Exponential backoff, max 30s
                     reconnectTimeoutRef.current = setTimeout(connectWs, delay);

@@ -38,7 +38,7 @@ from vision import VisionPipeline, ValuationEngine
 
 # Import database utilities
 print("Importing Database..."); sys.stdout.flush()
-from database import get_session, Narrative, PriceData
+from database import get_session, Narrative, PriceData, TradingSignal, SilverScan, AgentVote
 
 # Import hybrid intelligence system
 print("DEBUG: Importing hybrid_engine..."); sys.stdout.flush()
@@ -98,67 +98,27 @@ async def lifespan(app: FastAPI):
         from database import init_database
         init_database()
         
-        # Step 1.5: Discover real narratives from news if database is empty
+        # Step 1.5: Seed demo data if database is empty
+        # Note: Hugging Face Spaces block external API calls (NewsAPI, yfinance)
+        # So we use realistic demo data instead
         session = get_session()
         narrative_count = session.query(Narrative).count()
         session.close()
         
         if narrative_count == 0:
-            print("🔍 [STARTUP] Database is empty, discovering narratives from news..."); sys.stdout.flush()
+            print("🌱 [STARTUP] Database is empty, seeding demo data..."); sys.stdout.flush()
+            print("ℹ️ [STARTUP] Note: Using demo data (HF Spaces block external APIs)"); sys.stdout.flush()
             try:
-                # Import necessary modules
-                from narrative.narrative_discovery import NarrativeDiscoveryEngine
-                from data_collection import format_for_narrative_discovery, collector as data_collector
-                
-                # Collect news articles
-                print("📰 [STARTUP] Collecting news articles..."); sys.stdout.flush()
-                data = await data_collector.collect_all(news_days_back=7)
-                
-                # Format for discovery
-                articles = format_for_narrative_discovery(data)
-                print(f"📚 [STARTUP] Collected {len(articles)} articles"); sys.stdout.flush()
-                
-                if len(articles) >= 3:
-                    # Run discovery pipeline
-                    print("🤖 [STARTUP] Running AI narrative discovery..."); sys.stdout.flush()
-                    engine = NarrativeDiscoveryEngine()
-                    narratives, metadata = await engine.discover_narratives(articles, top_n=5)
-                    
-                    # Save to database
-                    session = get_session()
-                    for narrative in narratives:
-                        db_narrative = Narrative(
-                            name=narrative.theme,
-                            description=narrative.description,
-                            strength=narrative.strength,
-                            sentiment=narrative.sentiment,
-                            phase="birth",
-                            birth_date=datetime.utcnow(),
-                            last_updated=datetime.utcnow()
-                        )
-                        session.add(db_narrative)
-                    session.commit()
-                    session.close()
-                    
-                    print(f"✅ [STARTUP] Discovered and saved {len(narratives)} narratives!"); sys.stdout.flush()
-                else:
-                    print(f"⚠️ [STARTUP] Not enough articles ({len(articles)}) for narrative discovery"); sys.stdout.flush()
+                from seed_demo_data import DemoDataSeeder
+                seeder = DemoDataSeeder()
+                await seeder.seed_all()
+                print("✅ [STARTUP] Demo data seeded successfully!"); sys.stdout.flush()
             except Exception as e:
-                print(f"⚠️ [STARTUP] Failed to discover narratives: {e}"); sys.stdout.flush()
+                print(f"⚠️ [STARTUP] Failed to seed demo data: {e}"); sys.stdout.flush()
                 import traceback
                 traceback.print_exc()
-                
-                # Fallback to demo data if discovery fails
-                print("🌱 [STARTUP] Falling back to demo narratives..."); sys.stdout.flush()
-                try:
-                    from seed_demo_data import DemoDataSeeder
-                    seeder = DemoDataSeeder()
-                    await seeder.seed_all()
-                    print("✅ [STARTUP] Demo data seeded as fallback!"); sys.stdout.flush()
-                except Exception as fallback_error:
-                    print(f"❌ [STARTUP] Demo fallback also failed: {fallback_error}"); sys.stdout.flush()
         else:
-            print(f"📊 [STARTUP] Database has {narrative_count} narratives, skipping discovery"); sys.stdout.flush()
+            print(f"📊 [STARTUP] Database has {narrative_count} narratives, skipping seed"); sys.stdout.flush()
         
         # Step 2: Lazy load heavy modules
         print("📥 [STARTUP] Loading core modules..."); sys.stdout.flush()
@@ -216,14 +176,18 @@ app = FastAPI(
 )
 
 # CORS middleware - Configure allowed origins from environment
+# Default to localhost dev origins; can be overridden with ALLOWED_ORIGINS env (comma-separated)
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 if os.getenv("CORS_ALLOW_ALL", "false").lower() == "true":
     ALLOWED_ORIGINS = ["*"]
 
+# If wildcard origins are allowed, do not set allow_credentials to True (browsers block wildcard + credentials)
+allow_credentials_flag = False if ALLOWED_ORIGINS == ["*"] else True
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=allow_credentials_flag,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -805,10 +769,7 @@ async def analyze_multi_agent(narrative_data: Dict[str, Any]):
         result = await multi_agent_orchestrator.analyze_narrative_multi(narrative_data)
         return {"success": True, "data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-    except Exception as e:
+        # Centralized error handling with stack trace for diagnostics
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -1320,7 +1281,8 @@ async def run_continuous_monitoring():
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting SilverSentinel via uvicorn.run on port 7860..."); sys.stdout.flush()
-    # Host 0.0.0.0 is crucial for Hugging Face Spaces
-    # Use string format to ensure proper module loading and route registration
-    uvicorn.run("main:app", host="0.0.0.0", port=7860)
+    port = int(os.getenv("PORT", "7860"))
+    log_level = os.getenv("LOG_LEVEL", "info")
+    print(f"🚀 Starting SilverSentinel via uvicorn.run on port {port}..."); sys.stdout.flush()
+    # Host 0.0.0.0 is crucial for Hugging Face Spaces and containerized deployments
+    uvicorn.run("main:app", host="0.0.0.0", port=port, log_level=log_level)
